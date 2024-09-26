@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 
 # scale_factor = 0.14
 
@@ -40,9 +41,13 @@ import numpy as np
 #=========================================================================================================================
 
 
-
 def load_image(file_path):
-    return cv2.imread(file_path)
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Image file not found: {file_path}")
+    image = cv2.imread(file_path)
+    if image is None:
+        raise ValueError(f"Failed to load image: {file_path}")
+    return image
 
 def convert_to_grayscale(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -77,74 +82,91 @@ def visualize_cotton_swabs(image, contours):
         cv2.circle(output, center, radius, (0, 255, 0), 2)
     
     cotton_swab_count = len(contours)
-    cv2.putText(output, f'Cotton Swab Count: {cotton_swab_count}', (10, 30), 
+    cv2.putText(output, f'Count: {cotton_swab_count}', (10, 30), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     return output, cotton_swab_count
 
 def process_image(image_path):
-    # 이미지 로드
-    image = load_image(image_path)
+    try:
+        # 이미지 로드
+        image = load_image(image_path)
+        
+        # 그레이스케일 변환
+        gray = convert_to_grayscale(image)
+        
+        # 가우시안 블러 적용
+        blurred = apply_gaussian_blur(gray)
+        
+        # 적응형 이진화 적용
+        adaptive_thresh = apply_adaptive_threshold(blurred)
+        
+        # 열림 연산 적용
+        opened = apply_opening(adaptive_thresh)
+        
+        # 소벨 연산자를 이용한 에지 검출
+        edges = detect_edges(opened)
+        
+        # 컨투어 검출
+        contours = find_contours(edges)
+        
+        # 면봉 머리 시각화 및 개수 계산
+        output, cotton_swab_count = visualize_cotton_swabs(image, contours)
+        
+        return output, cotton_swab_count
+    except Exception as e:
+        print(f"Error processing image {image_path}: {str(e)}")
+        return None, 0
     
-    # 그레이스케일 변환
-    gray = convert_to_grayscale(image)
+        
+def display_results(images, cotton_swab_counts):
+    rows = 2
+    cols = 5
+    scale_factor = 0.16
     
-    # 가우시안 블러 적용
-    blurred = apply_gaussian_blur(gray)
+    resized_images = []
+    for img in images:
+        width = int(img.shape[1] * scale_factor)
+        height = int(img.shape[0] * scale_factor)
+        resized_images.append(cv2.resize(img, (width, height)))
     
-    # 적응형 이진화 적용
-    adaptive_thresh = apply_adaptive_threshold(blurred)
+    min_height = min(image.shape[0] for image in resized_images)
+    min_width = min(image.shape[1] for image in resized_images)
     
-    # 열림 연산 적용
-    opened = apply_opening(adaptive_thresh)
+    for i in range(len(resized_images)):
+        resized_images[i] = cv2.resize(resized_images[i], (min_width, min_height))
     
-    # 소벨 연산자를 이용한 에지 검출
-    edges = detect_edges(opened)
+    combined_image = np.zeros((min_height * rows, min_width * cols, 3), dtype=np.uint8)
     
-    # 컨투어 검출
-    contours = find_contours(edges)
+    for i, img in enumerate(resized_images):
+        row = i // cols
+        col = i % cols
+        combined_image[row * min_height:(row + 1) * min_height, col * min_width:(col + 1) * min_width] = img
     
-    # 면봉 머리 시각화 및 개수 계산
-    output, cotton_swab_count = visualize_cotton_swabs(image, contours)
+    # 면봉 개수 정보 추가
+    for i, count in enumerate(cotton_swab_counts):
+        row = i // cols
+        col = i % cols
+        text_pos = (col * min_width + 10, (row + 1) * min_height - 10)
+        cv2.putText(combined_image, f"Count: {count}", text_pos, 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     
-    return {
-        'original': image,
-        'gray': gray,
-        'blurred': blurred,
-        'adaptive_thresh': adaptive_thresh,
-        'opened': opened,
-        'edges': edges,
-        'output': output,
-        'cotton_swab_count': cotton_swab_count
-    }
-
-def display_results(results):
-    # 결과 창 크기 설정 및 이미지 출력
-    window_names = [
-        'Original Image', 'Grayscale', 'Blurred', 'Adaptive Thresholding',
-        'Opened Image', 'Edge Detection', 'Detected Cotton Swabs'
-    ]
-    
-    for name in window_names:
-        cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(name, 800, 800)
-    
-    cv2.imshow('Original Image', results['original'])
-    cv2.imshow('Grayscale', results['gray'])
-    cv2.imshow('Blurred', results['blurred'])
-    cv2.imshow('Adaptive Thresholding', results['adaptive_thresh'])
-    cv2.imshow('Opened Image', results['opened'])
-    cv2.imshow('Edge Detection', results['edges'])
-    cv2.imshow('Detected Cotton Swabs', results['output'])
-    
+    cv2.imshow('Cotton Swab Detection Results', combined_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 # 메인 실행 부분
 if __name__ == "__main__":
-    image_paths = ["mb_001.jpg", "mb_002.jpg", "mb_003.jpg", "mb_004.jpg", "mb_005.jpg", 
-          "mb_006.jpg", "mb_007.jpg", "mb_008.jpg", "mb_010.jpg", "mb_011.jpg", "mb_plus.jpg"]  # 처리할 이미지 경로 리스트
+    image_paths = ["mb_001.jpg", "mb_002.jpg", "mb_003.jpg", "mb_004.jpg", "mb_005.jpg",
+                   "mb_006.jpg", "mb_007.jpg", "mb_008.jpg", "mb_010.jpg", "mb_011.jpg"]
+    
+    processed_images = []
+    cotton_swab_counts = []
     
     for image_path in image_paths:
-        results = process_image(image_path)
-        print(f"Image: {image_path}, Cotton Swab Count: {results['cotton_swab_count']}")
-        display_results(results)
+        output, count = process_image(image_path)
+        if output is not None:
+            processed_images.append(output)
+            cotton_swab_counts.append(count)
+            print(f"Image: {image_path}, Cotton Swab Count: {count}")
+    
+    display_results(processed_images, cotton_swab_counts)
