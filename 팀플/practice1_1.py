@@ -2,45 +2,6 @@ import cv2
 import numpy as np
 import os
 
-# scale_factor = 0.14
-
-# images = []
-# for filename in mbimg:
-#     color_image = cv2.imread(filename, cv2.IMREAD_COLOR)
-#     if color_image is None:
-#         print(f"Error loading image {filename}. Check the file path.")
-#         continue
-    
-#     width = int(color_image.shape[1] * scale_factor)
-#     height = int(color_image.shape[0] * scale_factor)
-#     resized_image = cv2.resize(color_image, (width, height))
-    
-#     images.append(resized_image)
-
-# min_height = min(image.shape[0] for image in images)
-# min_width = min(image.shape[1] for image in images)
-
-# for i in range(len(images)):
-#     images[i] = cv2.resize(images[i], (min_width, min_height))
-
-# rows = 2
-# cols = 5
-# combined_image = np.zeros((min_height * rows, min_width * cols, 3), dtype=np.uint8)
-
-# for i in range(len(images)):
-#     row = i // cols
-#     col = i % cols
-#     combined_image[row * min_height:(row + 1) * min_height, col * min_width:(col + 1) * min_width] = images[i]
-
-# cv2.imshow('Combined Images', combined_image)
-# cv2.waitKey(0)  # 키 입력 대기
-# cv2.destroyAllWindows()  # 창 닫기
-
-#=========================================================================================================================
-
-#=========================================================================================================================
-
-
 def load_image(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Image file not found: {file_path}")
@@ -116,12 +77,11 @@ def process_image(image_path):
     except Exception as e:
         print(f"Error processing image {image_path}: {str(e)}")
         return None, 0
-    
-        
+
 def display_results(images, cotton_swab_counts):
     rows = 2
     cols = 5
-    scale_factor = 0.16
+    scale_factor = 0.14
     
     resized_images = []
     for img in images:
