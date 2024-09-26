@@ -2,45 +2,6 @@ import cv2
 import numpy as np
 import os
 
-# scale_factor = 0.14
-
-# images = []
-# for filename in mbimg:
-#     color_image = cv2.imread(filename, cv2.IMREAD_COLOR)
-#     if color_image is None:
-#         print(f"Error loading image {filename}. Check the file path.")
-#         continue
-    
-#     width = int(color_image.shape[1] * scale_factor)
-#     height = int(color_image.shape[0] * scale_factor)
-#     resized_image = cv2.resize(color_image, (width, height))
-    
-#     images.append(resized_image)
-
-# min_height = min(image.shape[0] for image in images)
-# min_width = min(image.shape[1] for image in images)
-
-# for i in range(len(images)):
-#     images[i] = cv2.resize(images[i], (min_width, min_height))
-
-# rows = 2
-# cols = 5
-# combined_image = np.zeros((min_height * rows, min_width * cols, 3), dtype=np.uint8)
-
-# for i in range(len(images)):
-#     row = i // cols
-#     col = i % cols
-#     combined_image[row * min_height:(row + 1) * min_height, col * min_width:(col + 1) * min_width] = images[i]
-
-# cv2.imshow('Combined Images', combined_image)
-# cv2.waitKey(0)  # 키 입력 대기
-# cv2.destroyAllWindows()  # 창 닫기
-
-#=========================================================================================================================
-
-#=========================================================================================================================
-
-
 def load_image(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Image file not found: {file_path}")
@@ -86,14 +47,14 @@ def visualize_cotton_swabs(image, contours):
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     return output, cotton_swab_count
 
-def visualize_cotton_swabs_improved(image, contours, min_radius=5, max_radius=1000, roi=None):
+def visualize_cotton_swabs_improved(image, contours, min_radius=1, max_radius=2000, roi=None):
     output = image.copy()
     valid_count = 0
     
-    # height, width = image.shape[:2]
-    # print(height, width)
+    height, width = image.shape[:2]
+    print("height: ", height, width)
     if roi is None:
-        roi = [100, 100, 1900, 1900]  # [x, y, w, h]
+        roi = [100, 80, width, height]  # [x, y, w, h]
     
     for cnt in contours:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
@@ -111,7 +72,7 @@ def visualize_cotton_swabs_improved(image, contours, min_radius=5, max_radius=10
     cv2.putText(output, f'Count: {valid_count}', (10, 30), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     
-    cv2.rectangle(output, (roi[0], roi[1]), (roi[0] + roi[2], roi[1] + roi[3]), (255, 0, 0), 2)
+    cv2.rectangle(output, (roi[0], roi[1]), (roi[0] + roi[2], roi[1] + roi[3]), (255, 0, 0), 5)
     
     return output, valid_count
 
