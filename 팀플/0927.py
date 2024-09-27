@@ -47,33 +47,33 @@ def cotton_swab(image, contours):
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     return output, cotton_swab_count
 
-def cotton_swab_improved(image, contours, min_radius=5, max_radius=900, roi=None):
-    output = image.copy()
-    valid_count = 0
+# def cotton_swab_improved(image, contours, min_radius=5, max_radius=900, roi=None):
+#     output = image.copy()
+#     valid_count = 0
     
-    height, width = image.shape[:2]
-    if roi_center is None or roi_radius is None:
-        roi_center = (width // 2, height // 2)
-        roi_radius = min(width, height) // 2
+#     height, width = image.shape[:2]
+#     if roi_center is None or roi_radius is None:
+#         roi_center = (width // 2, height // 2)
+#         roi_radius = min(width, height) // 2
     
-    for cnt in contours:
-        (x, y), radius = cv2.minEnclosingCircle(cnt)
-        center = (int(x), int(y))
-        radius = int(radius)
+#     for cnt in contours:
+#         (x, y), radius = cv2.minEnclosingCircle(cnt)
+#         center = (int(x), int(y))
+#         radius = int(radius)
         
-        # 원 크기 제한 적용 및 ROI 내부 확인
-        if min_radius <= radius <= max_radius:
-            distance = np.sqrt((center[0] - roi_center[0])**2 + (center[1] - roi_center[1])**2)
-            if distance <= roi_radius:
-                cv2.circle(output, center, radius, (0, 255, 0), 2)
-                valid_count += 1
+#         # 원 크기 제한 적용 및 ROI 내부 확인
+#         if min_radius <= radius <= max_radius:
+#             distance = np.sqrt((center[0] - roi_center[0])**2 + (center[1] - roi_center[1])**2)
+#             if distance <= roi_radius:
+#                 cv2.circle(output, center, radius, (0, 255, 0), 2)
+#                 valid_count += 1
     
-    cv2.putText(output, f'Count: {valid_count}', (10, 30), 
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+#     cv2.putText(output, f'Count: {valid_count}', (10, 30), 
+#                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     
-    cv2.rectangle(output, (roi[0], roi[1]), (roi[0] + roi[2], roi[1] + roi[3]), (255, 0, 0), 5)
+#     cv2.rectangle(output, (roi[0], roi[1]), (roi[0] + roi[2], roi[1] + roi[3]), (255, 0, 0), 5)
     
-    return output, valid_count
+#     return output, valid_count
 
 
 #=========================================================================================================
@@ -159,66 +159,14 @@ def process_image(image_path):
         contours = find_contours(edges)
         
         # 면봉 머리 시각화 및 개수 계산
-        output, cotton_swab_count = cotton_swab_improved(image, contours)
+        output, cotton_swab_count = cotton_swab_circular_roi(image, contours)
         
         return output, cotton_swab_count
     except Exception as e:
         print(f"Error processing image {image_path}: {str(e)}")
         return None, 0
 
-# def display_results(images, cotton_swab_counts):
-#     rows = 2
-#     cols = 5
-#     scale_factor = 0.16
-    
-#     resized_images = []
-#     for img in images:
-#         width = int(img.shape[1] * scale_factor)
-#         height = int(img.shape[0] * scale_factor)
-#         resized_images.append(cv2.resize(img, (width, height)))
-    
-#     min_height = min(image.shape[0] for image in resized_images)
-#     min_width = min(image.shape[1] for image in resized_images)
-    
-#     for i in range(len(resized_images)):
-#         resized_images[i] = cv2.resize(resized_images[i], (min_width, min_height))
-    
-#     combined_image = np.zeros((min_height * rows, min_width * cols, 3), dtype=np.uint8)
-    
-#     for i, img in enumerate(resized_images):
-#         row = i // cols
-#         col = i % cols
-#         combined_image[row * min_height:(row + 1) * min_height, col * min_width:(col + 1) * min_width] = img
-    
-#     for i, count in enumerate(cotton_swab_counts):
-#         row = i // cols
-#         col = i % cols
-#         text_pos = (col * min_width + 10, (row + 1) * min_height - 10)
-#         cv2.putText(combined_image, f"Count: {count}", text_pos, 
-#                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-    
-#     cv2.imshow('Cotton Swab Detection Results', combined_image)
-#     cv2.waitKey(0)
-#     cv2.destroyAllWindows()
-
-# if __name__ == "__main__":
-#     image_paths = ["mb_001.jpg", "mb_002.jpg", "mb_003.jpg", "mb_004.jpg", "mb_005.jpg",
-#                    "mb_006.jpg", "mb_007.jpg", "mb_008.jpg", "mb_010.jpg", "mb_011.jpg"]
-    
-#     processed_images = []
-#     cotton_swab_counts = []
-    
-#     for image_path in image_paths:
-#         output, count = process_image(image_path)
-#         if output is not None:
-#             processed_images.append(output)
-#             cotton_swab_counts.append(count)
-#             print(f"Image: {image_path}, Cotton Swab Count: {count}")
-    
-#     display_results(processed_images, cotton_swab_counts)
-
-
-def display_results(images, cotton_swab_counts, method_names):
+def display_results(images, cotton_swab_counts):
     rows = 2
     cols = 5
     scale_factor = 0.16
@@ -242,15 +190,12 @@ def display_results(images, cotton_swab_counts, method_names):
         col = i % cols
         combined_image[row * min_height:(row + 1) * min_height, col * min_width:(col + 1) * min_width] = img
     
-    for i, (count, method) in enumerate(zip(cotton_swab_counts, method_names)):
+    for i, count in enumerate(cotton_swab_counts):
         row = i // cols
         col = i % cols
-        text_pos = (col * min_width + 10, (row + 1) * min_height - 30)
-        cv2.putText(combined_image, f"{method}", text_pos, 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
         text_pos = (col * min_width + 10, (row + 1) * min_height - 10)
         cv2.putText(combined_image, f"Count: {count}", text_pos, 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     
     cv2.imshow('Cotton Swab Detection Results', combined_image)
     cv2.waitKey(0)
@@ -260,41 +205,14 @@ if __name__ == "__main__":
     image_paths = ["mb_001.jpg", "mb_002.jpg", "mb_003.jpg", "mb_004.jpg", "mb_005.jpg",
                    "mb_006.jpg", "mb_007.jpg", "mb_008.jpg", "mb_010.jpg", "mb_011.jpg"]
     
-    processed_images_roi = []
-    processed_images_hough = []
-    cotton_swab_counts_roi = []
-    cotton_swab_counts_hough = []
-    method_names = []
+    processed_images = []
+    cotton_swab_counts = []
     
     for image_path in image_paths:
-        # 이미지 로드
-        image = load_image(image_path)
-        
-        # 원형 ROI 방법
-        gray = grayscale(image)
-        edges = detect_edges(gray)
-        contours = find_contours(edges)
-        
-        roi_center = (image.shape[1] // 2, image.shape[0] // 2)
-        roi_radius = min(image.shape[:2]) // 2 - 50
-        
-        output_roi, count_roi = cotton_swab_circular_roi(image, contours, 
-                                                         roi_center=roi_center, 
-                                                         roi_radius=roi_radius)
-        
-        # HoughCircles 방법
-        output_hough, count_hough = detect_circles_hough(image)
-        
-        if output_roi is not None and output_hough is not None:
-            processed_images_roi.append(output_roi)
-            processed_images_hough.append(output_hough)
-            cotton_swab_counts_roi.append(count_roi)
-            cotton_swab_counts_hough.append(count_hough)
-            method_names.extend(["Circular ROI", "HoughCircles"])
-            print(f"Image: {image_path}, Circular ROI Count: {count_roi}, HoughCircles Count: {count_hough}")
+        output, count = process_image(image_path)
+        if output is not None:
+            processed_images.append(output)
+            cotton_swab_counts.append(count)
+            print(f"Image: {image_path}, Cotton Swab Count: {count}")
     
-    # 두 방법의 결과를 하나의 리스트로 합침
-    all_images = processed_images_roi + processed_images_hough
-    all_counts = cotton_swab_counts_roi + cotton_swab_counts_hough
-    
-    display_results(all_images, all_counts, method_names)
+    display_results(processed_images, cotton_swab_counts)
