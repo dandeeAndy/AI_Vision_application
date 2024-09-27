@@ -47,12 +47,12 @@ def visualize_cotton_swabs(image, contours):
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     return output, cotton_swab_count
 
-def visualize_cotton_swabs_improved(image, contours, min_radius=1, max_radius=2000, roi=None):
+def visualize_cotton_swabs_improved(image, contours, min_radius=5, max_radius=900, roi=None):
     output = image.copy()
     valid_count = 0
     
     height, width = image.shape[:2]
-    print("height: ", height, width)
+    print(height, width)
     if roi is None:
         roi = [100, 80, width, height]  # [x, y, w, h]
     
@@ -61,9 +61,9 @@ def visualize_cotton_swabs_improved(image, contours, min_radius=1, max_radius=20
         center = (int(x), int(y))
         radius = int(radius)
         
-        # 원의 크기 제한 적용
+        # 원 크기 제한 적용
         if min_radius <= radius <= max_radius:
-            # ROI 내에 있는지 확인
+            # ROI 영역에 속하는 원만 시각화
             if (roi[0] <= center[0] <= roi[0] + roi[2] and 
                 roi[1] <= center[1] <= roi[1] + roi[3]):
                 cv2.circle(output, center, radius, (0, 255, 0), 2)
