@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 
 # 이미지 파일 경로 설정
-image_path = "C:/Users/user/Desktop/1/mb_001.jpg"  # 경로 수정
-output_image_path = "C:/Users/user/Desktop/1/mb_001(save).jpg"  # 저장할 이미지 경로
+image_path = "mb_001.jpg"  # 경로 수정
+output_image_path = "mb_001(save).jpg"  # 저장할 이미지 경로
 
 # 이미지 열기 (컬러)
 img = cv2.imread(image_path, cv2.IMREAD_COLOR)

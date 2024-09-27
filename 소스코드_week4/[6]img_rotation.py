@@ -8,7 +8,7 @@ img = cv2.imread("opencv_logo.png", cv2.IMREAD_COLOR)
 (cX, cY) = (w / 2, h / 2)
 
 # rotate our image by xx degrees
-degree = 30
+degree = 270
 scale = 0.7 # 1.0보다 작은 값 --> 작아짐
             # 1.0보다 큰 값 --> 커짐
 M = cv2.getRotationMatrix2D((cX, cY), degree, scale) 

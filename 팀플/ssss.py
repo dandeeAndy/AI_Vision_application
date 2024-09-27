@@ -19,7 +19,7 @@ def resize_image(image, width=None, height=None):
     return cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
 
 # 이미지 읽기 및 크기 조정
-image_path = 'mb_001.jpg'
+image_path = 'mb_004.jpg'
 img = cv2.imread(image_path, cv2.IMREAD_COLOR)
 img_resized = resize_image(img, width=800)  # 화면에 맞게 크기 조정
 
@@ -38,9 +38,9 @@ eroded = cv2.erode(dilated, kernel, iterations=1)
 circles = cv2.HoughCircles(
     eroded, 
     cv2.HOUGH_GRADIENT, 
-    dp=1.4, 
-    minDist=7,  # 면봉들이 밀접해 있기 때문에 최소 거리 조정
-    param1=50, 
+    dp=1.3, 
+    minDist=16,  # 면봉들이 밀접해 있기 때문에 최소 거리 조정
+    param1=40, 
     param2=25,  # 더 많은 원을 검출하도록 임계값 조정
     minRadius=4,  # 면봉의 크기에 맞는 최소 반지름 조정
     maxRadius=16  # 면봉의 크기에 맞는 최대 반지름 조정
