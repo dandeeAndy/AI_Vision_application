@@ -72,7 +72,7 @@ else:
     cv2.imshow('Binary Image', binary_resized)
 
     # 최종 이미지 크기 조정
-    img_resized = cv2.resize(img, (400, 300))
+    img_resized = cv2.resize(img, (1000, 1000))
     cv2.imshow('Detected Cotton Swabs', img_resized)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
