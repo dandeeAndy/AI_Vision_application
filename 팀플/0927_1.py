@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 
+# 이미지 업로드
 def load_image(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Image file not found: {file_path}")
@@ -10,6 +11,7 @@ def load_image(file_path):
         raise ValueError(f"Failed to load image: {file_path}")
     return image
 
+# 그레이스케일
 def grayscale(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -51,7 +53,7 @@ def detect_container(image):
     blurred = gaussian_blur(gray)
     
     # HoughCircles to detect the container
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1, minDist=100,
+    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1, minDist=100, 
                                param1=50, param2=30, minRadius=100, maxRadius=0)
     
     if circles is not None:

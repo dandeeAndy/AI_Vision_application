@@ -1,7 +1,7 @@
 import cv2
 
 # 이미지 열기
-img = cv2.imread("zebra.jpg", cv2.IMREAD_COLOR) # 컬러로 열기
+img = cv2.imread("C:/Users/schah/바탕 화면/Andy/4_Senior/2nd_semester/AI_Vision_application/4주차/소스코드_week3/zebra.jpg", cv2.IMREAD_COLOR) # 컬러로 열기
 cv2.imshow("1.image(bgr)", img) # BGR 이미지 표시
 
 img_copied = img.copy() # 이미지 카피
