@@ -169,7 +169,7 @@ def process_image(image_path):
 def display_results(images, cotton_swab_counts):
     rows = 2
     cols = 5
-    scale_factor = 0.16
+    scale_factor = 0.14
     
     resized_images = []
     for img in images:
