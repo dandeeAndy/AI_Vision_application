@@ -94,29 +94,25 @@ def process_image(file_path):
     # # 컨투어 찾기
     # contours = find_contours(edged_image)
     
-    # 가장 큰 원 찾기
-    largest_circle = find_largest_circle(eroded_image, image)
+    process_image = eroded_image
+    
+    # # 가장 큰 원 찾기
+    # largest_circle = find_largest_circle(eroded_image, image)
     # if largest_circle is None:
     #     return image, None
     
-    # 마스킹 처리
-    masked_image = mask_image(image, largest_circle)
+    # # 면봉 검출 및 이미지에 표시
+    # processed_image = mark_cotton_buds(image, largest_circle)
     
-    # ROI 설정 및 추가 원 검출
-    roi_image = get_roi(masked_image, largest_circle)
-    if roi_image is None:
-        return masked_image, None
-    
-    # roi_image가 8비트 그레이스케일 이미지인지 확인
-    if roi_image.dtype != np.uint8 or len(roi_image.shape) != 2:
-        roi_image = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)
-        roi_image = cv2.normalize(roi_image, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    
-    circles = detect_circles_in_roi(roi_image)
-    
-    return masked_image, circles
+    return process_image
 
-def find_largest_circle(contours, image):
+def find_largest_circle(image, original_image):
+    # 에지 검출
+    edged_image = detect_edges(image)
+    
+    # 컨투어 찾기
+    contours, _ = cv2.findContours(edged_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
     max_area = 0
     largest_contour = None
     for contour in contours:
@@ -130,18 +126,28 @@ def find_largest_circle(contours, image):
     (x, y), radius = cv2.minEnclosingCircle(largest_contour)
     return (int(x), int(y)), int(radius)
 
-def mask_image(image, largest_circle):
-    mask = np.zeros_like(image)
-    cv2.circle(mask, largest_circle[0], largest_circle[1], (255, 255, 255), -1)
-    return cv2.bitwise_and(image, mask)
+# def mark_cotton_buds(image, largest_circle):
+#     # 이미지에 원 표시
+#     x, y, r = largest_circle
+#     cv2.circle(image, (x, y), r, (0, 255, 0), 2)
+    
+#     # 면봉 개수 출력
+#     cv2.putText(image, f"면봉 수: 1", (x, y - r - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+    
+#     return image
 
-def get_roi(image, largest_circle):
-    x, y = largest_circle[0]
-    radius = largest_circle[1]
-    roi = image[y-radius:y+radius, x-radius:x+radius]
-    if roi.shape[0] == 0 or roi.shape[1] == 0:
-        return None
-    return roi
+# def mask_image(image, largest_circle):
+#     mask = np.zeros_like(image)
+#     cv2.circle(mask, largest_circle[0], largest_circle[1], (255, 255, 255), -1)
+#     return cv2.bitwise_and(image, mask)
+
+# def get_roi(image, largest_circle):
+#     x, y = largest_circle[0]
+#     radius = largest_circle[1]
+#     roi = image[y-radius:y+radius, x-radius:x+radius]
+#     if roi.shape[0] == 0 or roi.shape[1] == 0:
+#         return None
+#     return roi
 
 def detect_circles_in_roi(roi_image):
     circles = cv2.HoughCircles(roi_image, cv2.HOUGH_GRADIENT, 1.3, 16,
@@ -169,5 +175,6 @@ if __name__ == "__main__":
     file_path = "mb_001.jpg"
     
     # 이미지 처리 및 결과 출력
-    masked_image, circles = process_image(file_path)
+    circles = process_image(file_path)
+    
     display_results(masked_image, circles)
