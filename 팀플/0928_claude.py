@@ -177,4 +177,4 @@ if __name__ == "__main__":
     # 이미지 처리 및 결과 출력
     circles = process_image(file_path)
     
-    display_results(masked_image, circles)
+    display_results(file_path, circles)
