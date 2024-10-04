@@ -30,14 +30,18 @@ def create_roi(image, roi_size, overlap=0.2):
 
 # ROI 전처리 함수
 def preprocess_roi(roi):
+    # kernel_size = (5, 5)
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    edges = cv2.Canny(blurred, 50, 150)
+    # dilation = cv2.dilate(gray, np.ones(kernel_size, np.uint8), iterations=2)
+    # erosion = cv2.erode(dilation, np.ones(kernel_size, np.uint8), iterations=2)
+    edges = cv2.GaussianBlur(gray, (5, 5), 0)
+    # print("shape: ", edges.shape)
+    # edges = cv2.Canny(blurred, 50, 150)
     return edges
 
 # 면봉 검출 함수
 def detect_cotton_swabs(roi, edges, min_radius, max_radius, param1, param2):
-    circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, dp=1.3, minDist=16,
+    circles = cv2.HoughCircles(edges, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
                                param1=param1, param2=param2, 
                                minRadius=min_radius, maxRadius=max_radius)
     
@@ -99,10 +103,14 @@ def main():
     root.withdraw()
     
     image_path = filedialog.askopenfilename()
-    min_radius = int(input("최소 반지름 입력 (기본값 10): ") or 10)
-    max_radius = int(input("최대 반지름 입력 (기본값 30): ") or 30)
-    param1 = int(input("param1 입력 (기본값 50): ") or 50)
-    param2 = int(input("param2 입력 (기본값 30): ") or 30)
+    # min_radius = int(input("최소 반지름 입력 (기본값 10): ") or 10)
+    # max_radius = int(input("최대 반지름 입력 (기본값 30): ") or 30)
+    # param1 = int(input("param1 입력 (기본값 50): ") or 50)
+    # param2 = int(input("param2 입력 (기본값 30): ") or 30)
+    min_radius = 30
+    max_radius = 50
+    param1 = 40
+    param2 = 28
     
     process_image(image_path, min_radius, max_radius, param1, param2)
 
