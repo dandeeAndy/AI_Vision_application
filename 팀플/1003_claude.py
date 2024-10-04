@@ -78,15 +78,20 @@ def process_image(image_path, min_radius, max_radius, param1, param2):
     
     # 결과 이미지와 전처리된 이미지 표시
     plt.figure(figsize=(20, 10))
+    
+    # 결과 이미지 표시
     plt.subplot(4, 5, 1)
     plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     plt.title("Result Image")
     plt.axis('off')
     
-    for i, preprocessed_img in enumerate(preprocessed_images, 1):
-        plt.subplot(4, 5, i+1)
+    # ROI 이미지 표시 (오른쪽으로 정렬)
+    for i, preprocessed_img in enumerate(preprocessed_images):
+        row = i // 4
+        col = i % 4
+        plt.subplot(4, 5, 5 * row + col + 2)
         plt.imshow(preprocessed_img, cmap='gray')
-        plt.title(f"ROI {i}")
+        plt.title(f"ROI {i+1}")
         plt.axis('off')
     
     plt.tight_layout()
