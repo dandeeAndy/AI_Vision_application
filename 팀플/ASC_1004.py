@@ -1,7 +1,5 @@
 import cv2
 import numpy as np
-import tkinter as tk
-from tkinter import filedialog
 import matplotlib.pyplot as plt
 
 # 이미지 불러오기 함수
@@ -44,6 +42,37 @@ def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2):
         return np.round(circles[0, :]).astype("int")
     return []
 
+# 겹치는 원 제거 함수
+def remove_overlapping_circles(circles, min_distance):
+    if len(circles) == 0:
+        return []
+    
+    # 원의 중심 좌표만 추출
+    centers = circles[:, :2]
+    
+    # 각 원 중심 간의 거리 계산
+    distances = np.sqrt(((centers[:, None, :] - centers[None, :, :]) ** 2).sum(axis=-1))
+    
+    # 대각선(자기 자신과의 거리)을 큰 값으로 설정
+    np.fill_diagonal(distances, np.inf)
+    
+    # 겹치지 않는 원들의 인덱스를 저장할 리스트
+    non_overlapping = []
+    
+    while len(centers) > 0:
+        # 현재 남아있는 원들 중 첫 번째 원을 선택
+        current = 0
+        non_overlapping.append(current)
+        
+        # 선택된 원과 다른 원들의 거리 확인
+        mask = distances[current] > min_distance
+        
+        # 마스크에 해당하는 원들만 남기고 나머지 제거
+        centers = centers[mask]
+        distances = distances[mask][:, mask]
+    
+    return circles[non_overlapping]
+
 # 이미지 처리 함수
 def process_image(image_path, min_radius, max_radius, param1, param2):
     image = load_image(image_path)
@@ -56,7 +85,7 @@ def process_image(image_path, min_radius, max_radius, param1, param2):
     roi_list = create_roi(image, roi_size)
     
     # 면봉 검출
-    total_cotton_swabs = 0
+    all_circles = []
     preprocessed_images = []
     
     for roi, (x, y) in roi_list:
@@ -64,24 +93,30 @@ def process_image(image_path, min_radius, max_radius, param1, param2):
         preprocessed_images.append(pre)
         
         circles = detect_cotton_swabs(roi, pre, min_radius, max_radius, param1, param2)
-        total_cotton_swabs += len(circles)
-        
-        for (cx, cy, r) in circles:
-            cv2.circle(image, (x + cx, y + cy), r, (0, 0, 255), 2)
-        
-        cv2.rectangle(image, (x, y), (x + roi_size[1], y + roi_size[0]), (0, 255, 0), 2)
-        cv2.putText(image, f"Count: {len(circles)}", (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        if len(circles) > 0:
+            circles[:, 0] += x  # x 좌표 조정
+            circles[:, 1] += y  # y 좌표 조정
+            all_circles.extend(circles)
     
+    # 겹치는 원 제거
+    min_distance = min_radius * 2  # 최소 거리를 원 반지름의 2배로 설정
+    non_overlapping_circles = remove_overlapping_circles(np.array(all_circles), min_distance)
+    
+    # 결과 표시
+    result_image = image.copy()
+    for (x, y, r) in non_overlapping_circles:
+        cv2.circle(result_image, (x, y), r, (0, 0, 255), 2)
+    
+    total_cotton_swabs = len(non_overlapping_circles)
     print(f"검출된 총 면봉 개수: {total_cotton_swabs}")
-    cv2.imwrite("result.jpg", image)
+    cv2.imwrite("result.jpg", result_image)
     
     # 결과 이미지와 전처리된 이미지 표시
     plt.figure(figsize=(20, 10))
     
     # 결과 이미지 표시
     plt.subplot(4, 5, 1)
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.imshow(cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB))
     plt.title("Result Image")
     plt.axis('off')
     
@@ -95,17 +130,10 @@ def process_image(image_path, min_radius, max_radius, param1, param2):
         plt.axis('off')
     
     plt.tight_layout()
-    
-    cv2.imshow("Result", image)
     plt.show()
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
 def main():
-    root = tk.Tk()
-    root.withdraw()
-    
-    image_path = filedialog.askopenfilename()
+    image_path = "mb_001.jpg"
     min_radius = 30
     max_radius = 50
     param1 = 40
