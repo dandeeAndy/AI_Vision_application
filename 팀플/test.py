@@ -19,31 +19,34 @@ def resize_image(image, width=None, height=None):
     return cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
 
 # 이미지 읽기 및 크기 조정
-image_path = 'mb_001.png'
+image_path = 'mb_001.jpg'
 img = cv2.imread(image_path, cv2.IMREAD_COLOR)
 img_resized = resize_image(img, width=800)  # 화면에 맞게 크기 조정
+print(img_resized.shape)
 
 # 그레이스케일 변환
 gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
 
-# # 블러 적용
+# 블러 적용
 blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-# # 팽창과 침식 연산으로 이미지 전처리
-# kernel = np.ones((2, 2), np.uint8)
-# dilated = cv2.dilate(blurred, kernel, iterations=2)
-# eroded = cv2.erode(dilated, kernel, iterations=1)
+# 팽창과 침식 연산으로 이미지 전처리
+kernel = np.ones((2, 2), np.uint8)
+dilated = cv2.dilate(blurred, kernel, iterations=1)
+eroded = cv2.erode(dilated, kernel, iterations=1)
+dilated = cv2.dilate(eroded, kernel, iterations=1)
+eroded = cv2.erode(dilated, kernel, iterations=1)
 
 # 허프 변환을 이용한 원 검출
 circles = cv2.HoughCircles(
-    blurred, 
+    eroded, 
     cv2.HOUGH_GRADIENT, 
-    dp=1.3, 
-    minDist=18,  # 면봉들이 밀접해 있기 때문에 최소 거리 조정
-    param1=40, #  허프 변환에서 자체적으로 캐니 엣지를 적용하게 되는데, 이때 사용되는 상위 임곗값을 의미합니다 하위 임곗값은 자동으로 할당되며, 상위 임곗값의 절반에 해당하는 값을 사용
-    param2=28,  # 더 많은 원을 검출하도록 임계값 조정
-    minRadius=4,  # 면봉의 크기에 맞는 최소 반지름 조정
-    maxRadius=16  # 면봉의 크기에 맞는 최대 반지름 조정
+    dp=1,
+    minDist=100,  # 면봉들이 밀접해 있기 때문에 최소 거리 조정
+    param1=40,
+    param2=100,  # 더 많은 원을 검출하도록 임계값 조정
+    minRadius=350,  # 면봉의 크기에 맞는 최소 반지름 조정
+    maxRadius=380  # 면봉의 크기에 맞는 최대 반지름 조정
 )
 
 # 검출된 원을 이미지에 그리기 및 개수 세기
