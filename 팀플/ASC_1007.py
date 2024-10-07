@@ -3,6 +3,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import filedialog
 import matplotlib.pyplot as plt
+from PIL import ImageFont, ImageDraw, Image
 
 # 이미지 불러오기 함수
 def load_image(image_path):
@@ -72,6 +73,14 @@ def calculate_distance(circle1, circle2):
     x2, y2, _ = circle2
     return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
+# 이미지에 텍스트 추가 함수(한글)
+def Put_Korean_Text(src, text, pos, font_size, font_color) :
+    img_pil = Image.fromarray(src)
+    draw = ImageDraw.Draw(img_pil)
+    font = ImageFont.truetype('C:/Users/schah/AppData/Local/Microsoft/Windows/Fonts/NanumSquareR.ttf', font_size)
+    draw.text(pos, text, font=font, fill= font_color)
+    return np.array(img_pil)
+
 # 이미지 처리 함수
 def process_image(image_path, min_radius, max_radius, param1, param2, distance_threshold):
     image = load_image(image_path)
@@ -106,6 +115,10 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     
     total_cotton_swabs = len(unique_circles)
     print(f"검출된 총 면봉 개수: {total_cotton_swabs}")
+
+    # 결과 이미지에 면봉 개수 출력
+    image = Put_Korean_Text(image, f"면봉 수: {total_cotton_swabs}개", (30,60), 80, (0,255,255))
+    
     cv2.imwrite("result.jpg", image)
     
     # 결과 이미지와 전처리된 이미지 표시
