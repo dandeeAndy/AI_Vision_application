@@ -167,6 +167,7 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     if largest_circle is None:
         print("면봉통을 찾을 수 없습니다.")
         return
+    
     # 원 밖 부분을 검은색으로 마스크 처리
     masked_image = mask_outside_circle(image, largest_circle)
     
@@ -185,7 +186,7 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
         best_circles = []
         best_preprocessed = None
         max_circles = 0
-
+        
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
             circles = detect_cotton_swabs(roi, preprocessed, min_radius, max_radius, param1, param2)
