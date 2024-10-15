@@ -29,17 +29,62 @@ def create_roi(image, roi_size, overlap=0.2):
     
     return roi_list
 
+# V 히스토그램을 분석하여 최적의 마스크 범위를 계산하는 함수
+def get_v_mask_range(v_channel):
+    hist = cv2.calcHist([v_channel], [0], None, [256], [0, 256])
+    
+    # V값 중 100에서 250 사이에서 가장 높은 빈도를 찾음
+    v_peak_idx = np.argmax(hist[100:250]) + 100
+    
+    # 마스크 범위를 지정 (+30, -30)
+    lower_v = max(v_peak_idx - 30, 0)
+    upper_v = min(v_peak_idx + 30, 255)
+    return lower_v, upper_v
+
 # ROI 전처리 함수
 def preprocess_roi(roi):
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    return blurred
+    hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    
+    # 각 ROI마다 V 채널 분석 후 마스크 적용
+    h_channel, s_channel, v_channel = cv2.split(hsv_img)
+    
+    # V 채널의 히스토그램을 분석하여 마스크 범위 지정
+    lower_v, upper_v = get_v_mask_range(v_channel)
+    
+    # HSV 범위를 설정 (H와 S는 신경쓰지 않고 V만 설정)
+    lower_bound = np.array([0, 0, lower_v])
+    upper_bound = np.array([180, 255, upper_v])
+    
+    # 마스크 적용
+    mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+    res = cv2.bitwise_and(roi, roi, mask=mask)
+    
+    gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    
+    blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
+    
+    # 3. 적응형 이진화 적용 (영역별 문턱값 처리)
+    adaptive_thresh = cv2.adaptiveThreshold(blurred_roi, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+    # 4. 열림 연산 적용 (침식 후 팽창)
+    kernel = np.ones((5, 5), np.uint8)  # 5x5 커널을 사용
+    opened = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_OPEN, kernel)
+
+    # 5. 소벨 연산자를 이용한 에지 검출 (수평과 수직 방향)
+    sobel_x = cv2.Sobel(opened, cv2.CV_64F, 1, 0, ksize=3)  # 수평 방향 에지
+    sobel_y = cv2.Sobel(opened, cv2.CV_64F, 0, 1, ksize=3)  # 수직 방향 에지
+
+    # 절대값을 취하여 두 방향의 에지 결합
+    sobel_combined = cv2.sqrt(sobel_x**2 + sobel_y**2)
+    sobel_combined = cv2.convertScaleAbs(sobel_combined)
+    
+    return sobel_combined  # 마스크가 적용되고 그레이스케일로 변환된 ROI 반환
 
 # 면봉 검출 함수
-def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2):
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
-                               param1=param1, param2=param2, 
-                               minRadius=min_radius, maxRadius=max_radius)
+def detect_cotton_swabs(roi, sobel_combined, min_radius, max_radius, param1, param2):
+    circles = cv2.HoughCircles(sobel_combined, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
+                                param1=param1, param2=param2, 
+                                minRadius=min_radius, maxRadius=max_radius)
     
     if circles is not None:
         return np.round(circles[0, :]).astype("int")
@@ -63,7 +108,7 @@ def remove_duplicate_circles(circles, distance_threshold):
         
         # 현재 원과 가까운 원들을 제거
         all_circles = [circle for circle in all_circles
-                       if calculate_distance(current_circle, circle) > distance_threshold]
+                    if calculate_distance(current_circle, circle) > distance_threshold]
     
     return unique_circles
 
@@ -141,8 +186,8 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     
     plt.tight_layout()
     
-    cv2.imshow("Result", image)
     plt.show()
+    cv2.imshow("Result", image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
