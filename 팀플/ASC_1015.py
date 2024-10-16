@@ -10,11 +10,11 @@ def load_image(image_path):
     return cv2.imread(image_path)
 
 # 면봉통 검출 함수 (가장 큰 원 찾기)
-def detect_largest_circle(image, min_radius=120, max_radius=1200):
+def detect_largest_circle(image, min_radius=800, max_radius=1050):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
-    circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
-                                param1=100, param2=50, 
+    circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
+                                param1=210, param2=110, 
                                 minRadius=min_radius, maxRadius=max_radius)
     
     if circles is not None:
@@ -30,7 +30,6 @@ def mask_outside_circle(image, circle):
     cv2.circle(masked_image, (cx, cy), r, (255, 255, 255), -1)  # 원 안 부분을 흰색으로
     masked_image = cv2.bitwise_and(image, masked_image)  # 원 안 부분만 남김
     return masked_image
-
 
 # ROI 생성 함수
 def create_roi(image, roi_size, overlap=0.2):
@@ -72,6 +71,45 @@ def preprocess_roi_1(roi):
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     return blurred
 
+# def preprocess_roi_2(roi):
+#     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    
+#     # 각 ROI마다 V 채널 분석 후 마스크 적용
+#     h_channel, s_channel, v_channel = cv2.split(hsv_img)
+    
+#     # V 채널의 히스토그램을 분석하여 마스크 범위 지정
+#     lower_v, upper_v = get_v_mask_range(v_channel)
+    
+#     # HSV 범위를 설정 (H와 S는 신경쓰지 않고 V만 설정)
+#     lower_bound = np.array([0, 0, lower_v])
+#     upper_bound = np.array([180, 255, upper_v])
+    
+#     # 마스크 적용
+#     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+#     res = cv2.bitwise_and(roi, roi, mask=mask)
+    
+#     gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    
+#     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
+    
+#     # 3. 적응형 이진화 적용 (영역별 문턱값 처리)
+#     adaptive_thresh = cv2.adaptiveThreshold(blurred_roi, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+#     # 4. 열림 연산 적용 (침식 후 팽창)
+#     kernel = np.ones((5, 5), np.uint8)  # 5x5 커널을 사용
+#     opened = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_OPEN, kernel)
+
+#     # 5. 소벨 연산자를 이용한 에지 검출 (수평과 수직 방향)
+#     sobel_x = cv2.Sobel(opened, cv2.CV_64F, 1, 0, ksize=3)  # 수평 방향 에지
+#     sobel_y = cv2.Sobel(opened, cv2.CV_64F, 0, 1, ksize=3)  # 수직 방향 에지
+
+#     # 절대값을 취하여 두 방향의 에지 결합
+#     sobel_combined = cv2.sqrt(sobel_x**2 + sobel_y**2)
+#     sobel_combined = cv2.convertScaleAbs(sobel_combined)
+    
+#     return sobel_combined  # 마스크가 적용되고 그레이스케일로 변환된 ROI 반환
+
+
 def preprocess_roi_2(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     
@@ -93,23 +131,7 @@ def preprocess_roi_2(roi):
     
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     
-    # 3. 적응형 이진화 적용 (영역별 문턱값 처리)
-    adaptive_thresh = cv2.adaptiveThreshold(blurred_roi, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-    # 4. 열림 연산 적용 (침식 후 팽창)
-    kernel = np.ones((5, 5), np.uint8)  # 5x5 커널을 사용
-    opened = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_OPEN, kernel)
-
-    # 5. 소벨 연산자를 이용한 에지 검출 (수평과 수직 방향)
-    sobel_x = cv2.Sobel(opened, cv2.CV_64F, 1, 0, ksize=3)  # 수평 방향 에지
-    sobel_y = cv2.Sobel(opened, cv2.CV_64F, 0, 1, ksize=3)  # 수직 방향 에지
-
-    # 절대값을 취하여 두 방향의 에지 결합
-    sobel_combined = cv2.sqrt(sobel_x**2 + sobel_y**2)
-    sobel_combined = cv2.convertScaleAbs(sobel_combined)
-    
-    return sobel_combined  # 마스크가 적용되고 그레이스케일로 변환된 ROI 반환
-
+    return blurred_roi
 #=========================================================================================================================
 
 # 면봉 검출 함수
@@ -259,11 +281,15 @@ def main():
     root.withdraw()
     
     image_path = filedialog.askopenfilename()
+    # min_radius = 30
+    # max_radius = 50
+    # param1 = 40
+    # param2 = 28
     min_radius = 30
     max_radius = 50
-    param1 = 40
-    param2 = 28
-    distance_threshold = 30  # 이 값을 조정하여 중복 제거의 민감도를 조절할 수 있습니다
+    param1 = 43
+    param2 = 26
+    distance_threshold = 58  # 이 값을 조정하여 중복 제거의 민감도를 조절할 수 있습니다
     
     process_image(image_path, min_radius, max_radius, param1, param2, distance_threshold)
 
