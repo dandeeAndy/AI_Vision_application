@@ -113,6 +113,7 @@ def preprocess_roi_1(roi):
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     kernel = np.ones((5, 5), np.uint8)  # 5x5 커널을 사용
     opened = cv2.morphologyEx(blurred_roi, cv2.MORPH_OPEN, kernel)
+    opened = cv2.morphologyEx(opened, cv2.MORPH_OPEN, kernel)
     
     return opened
 
@@ -309,7 +310,7 @@ def process_image(image_path, distance_threshold):
     image = Put_Korean_Text(image, f"면봉 수: {total_cotton_swabs}개", (30, 60), 80, (0, 255, 255))
     
     # 리사이즈 비율 설정 (1000 픽셀 이하로 조정)
-    max_width = 2000
+    max_width = 1000
     if image.shape[1] > max_width:
         scale_ratio = max_width / image.shape[1]
         new_height = int(image.shape[0] * scale_ratio)
@@ -317,30 +318,8 @@ def process_image(image_path, distance_threshold):
     else:
         resized_image = image
 
-    cv2.imwrite("result_improved.jpg", resized_image)
-    
-    # 결과 이미지와 전처리된 이미지 표시
-    plt.figure(figsize=(20, 10))
-    
-    # 결과 이미지 표시
-    plt.subplot(4, 5, 1)
-    plt.imshow(cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB))
-    plt.title(f"Result Image (Total: {total_cotton_swabs})")
-    plt.axis('off')
-    
-    # ROI 이미지 표시 (오른쪽으로 정렬)
-    for i, preprocessed_img in enumerate(preprocessed_images):
-        row = i // 4
-        col = i % 4
-        plt.subplot(4, 5, 5 * row + col + 2)
-        plt.imshow(preprocessed_img, cmap='gray')
-        plt.title(f"ROI {i + 1}")
-        plt.axis('off')
-    
-    plt.tight_layout()
-    
-    cv2.imshow("Result", resized_image)
-    plt.show()
+    cv2.imwrite("result_final.jpg", resized_image)
+    # cv2.imshow("Result", resized_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -349,20 +328,6 @@ def main():
     root.withdraw()
     
     image_path = filedialog.askopenfilename()
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 40
-    # param2 = 28
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 43
-    # param2 = 28
-    # distance_threshold = 60
-    
-    # min_radius = 25
-    # max_radius = 37
-    # param1 = 35
-    # param2 = 28
     distance_threshold = 43
     
     process_image(image_path, distance_threshold)

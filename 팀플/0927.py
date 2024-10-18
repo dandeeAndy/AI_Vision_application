@@ -203,7 +203,7 @@ def display_results(images, cotton_swab_counts):
 
 if __name__ == "__main__":
     image_paths = ["mb_001.jpg", "mb_002.jpg", "mb_003.jpg", "mb_004.jpg", "mb_005.jpg",
-                   "mb_006.jpg", "mb_007.jpg", "mb_008.jpg", "mb_010.jpg", "mb_011.jpg"]
+                    "mb_006.jpg", "mb_007.jpg", "mb_008.jpg", "mb_010.jpg", "mb_011.jpg"]
     
     processed_images = []
     cotton_swab_counts = []

@@ -37,8 +37,8 @@ def preprocess_roi(roi):
 # 면봉 검출 함수
 def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2):
     circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
-                               param1=param1, param2=param2, 
-                               minRadius=min_radius, maxRadius=max_radius)
+                                param1=param1, param2=param2, 
+                                minRadius=min_radius, maxRadius=max_radius)
     
     if circles is not None:
         return np.round(circles[0, :]).astype("int")
