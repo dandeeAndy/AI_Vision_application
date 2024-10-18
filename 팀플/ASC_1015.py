@@ -9,28 +9,7 @@ from PIL import ImageFont, ImageDraw, Image
 def load_image(image_path):
     return cv2.imread(image_path)
 
-# 면봉통 검출 함수 (가장 큰 원 찾기)
-def detect_largest_circle(image, min_radius=800, max_radius=1050):
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
-    circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
-                                param1=210, param2=110, 
-                                minRadius=min_radius, maxRadius=max_radius)
-    
-    if circles is not None:
-        circles = np.round(circles[0, :]).astype("int")
-        largest_circle = max(circles, key=lambda x: x[2])  # 가장 큰 원
-        return largest_circle
-    return None
-
-# 원 밖부분을 검은색으로 처리하는 함수
-def mask_outside_circle(image, circle):
-    masked_image = np.zeros_like(image)  # 같은 크기의 검은색 이미지 생성
-    cx, cy, r = circle
-    cv2.circle(masked_image, (cx, cy), r, (255, 255, 255), -1)  # 원 안 부분을 흰색으로
-    masked_image = cv2.bitwise_and(image, masked_image)  # 원 안 부분만 남김
-    return masked_image
-
+# 면봉통 외곽 검출 및 마스킹 함수 (컨투어 사용)
 def mask_outside_contour(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -40,19 +19,16 @@ def mask_outside_contour(image):
     dilated = cv2.dilate(thresh, kernel, iterations=1)
     
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        mask = np.zeros_like(image)
+        mask = np.zeros_like(image)  # 마스크는 이미지와 같은 크기여야 함
         cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
-        result = cv2.bitwise_and(image, mask)
-
-        if len(largest_contour) >= 5:
-            ellipse = cv2.fitEllipse(largest_contour)
-            cv2.ellipse(result, ellipse, (0, 255, 0), 2)
-        else:
-            print("타원을 그릴 수 없습니다. 충분한 점이 없습니다.")
-        return result
-    return image
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)  # 마스크를 그레이스케일로 변환
+        mask = mask.astype(np.uint8)  # 마스크를 CV_8U 타입으로 변환
+        result = cv2.bitwise_and(image, image, mask=mask)  # 마스크를 적용한 이미지
+        return result, mask
+    return image, None
 
 # ROI 생성 함수
 def create_roi(image, roi_size, overlap=0.2):
@@ -83,8 +59,36 @@ def get_v_mask_range(v_channel):
     
     # 마스크 범위를 지정 (+30, -30)
     lower_v = max(v_peak_idx - 30, 0)
-    upper_v = min(v_peak_idx + 30, 255)
+    upper_v = 255
     return lower_v, upper_v
+
+# 밝기 계산 함수
+def calculate_brightness(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    return np.mean(hsv[:,:,2])
+
+# CLAHE 적용 함수 (ROI 기반)
+def apply_clahe_to_roi(roi):
+    brightness = calculate_brightness(roi)
+    
+    if brightness > 100:
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8,8))
+    else:
+        clahe = cv2.createCLAHE(clipLimit=1.3, tileGridSize=(8,8))
+    
+    lab = cv2.cvtColor(roi, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    cl = clahe.apply(l)
+    limg = cv2.merge((cl, a, b))
+    result = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    return result
+
+# 새로운 전처리 함수 (CLAHE 포함)
+def preprocess_roi_3(roi):
+    clahe_roi = apply_clahe_to_roi(roi)
+    gray = cv2.cvtColor(clahe_roi, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    return blurred
 
 #=========================================================================================================================
 
@@ -93,45 +97,6 @@ def preprocess_roi_1(roi):
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     return blurred
-
-# def preprocess_roi_2(roi):
-#     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    
-#     # 각 ROI마다 V 채널 분석 후 마스크 적용
-#     h_channel, s_channel, v_channel = cv2.split(hsv_img)
-    
-#     # V 채널의 히스토그램을 분석하여 마스크 범위 지정
-#     lower_v, upper_v = get_v_mask_range(v_channel)
-    
-#     # HSV 범위를 설정 (H와 S는 신경쓰지 않고 V만 설정)
-#     lower_bound = np.array([0, 0, lower_v])
-#     upper_bound = np.array([180, 255, upper_v])
-    
-#     # 마스크 적용
-#     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
-#     res = cv2.bitwise_and(roi, roi, mask=mask)
-    
-#     gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-    
-#     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
-    
-#     # 3. 적응형 이진화 적용 (영역별 문턱값 처리)
-#     adaptive_thresh = cv2.adaptiveThreshold(blurred_roi, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-#     # 4. 열림 연산 적용 (침식 후 팽창)
-#     kernel = np.ones((5, 5), np.uint8)  # 5x5 커널을 사용
-#     opened = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_OPEN, kernel)
-
-#     # 5. 소벨 연산자를 이용한 에지 검출 (수평과 수직 방향)
-#     sobel_x = cv2.Sobel(opened, cv2.CV_64F, 1, 0, ksize=3)  # 수평 방향 에지
-#     sobel_y = cv2.Sobel(opened, cv2.CV_64F, 0, 1, ksize=3)  # 수직 방향 에지
-
-#     # 절대값을 취하여 두 방향의 에지 결합
-#     sobel_combined = cv2.sqrt(sobel_x**2 + sobel_y**2)
-#     sobel_combined = cv2.convertScaleAbs(sobel_combined)
-    
-#     return sobel_combined  # 마스크가 적용되고 그레이스케일로 변환된 ROI 반환
-
 
 def preprocess_roi_2(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
@@ -158,8 +123,9 @@ def preprocess_roi_2(roi):
 #=========================================================================================================================
 
 # 면봉 검출 함수
-def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2):
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
+def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2, mask):
+    masked_blurred = cv2.bitwise_and(blurred, blurred, mask=mask)
+    circles = cv2.HoughCircles(masked_blurred, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
                                 param1=param1, param2=param2, 
                                 minRadius=min_radius, maxRadius=max_radius)
     
@@ -207,14 +173,8 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
         print("이미지를 불러오는 데 실패했습니다.")
         return
     
-    # 면봉통 검출
-    largest_circle = detect_largest_circle(image)
-    if largest_circle is None:
-        print("면봉통을 찾을 수 없습니다.")
-        return
-    
-    # 원 밖 부분을 검은색으로 마스크 처리
-    masked_image = mask_outside_circle(image, largest_circle)
+    # 면봉통 검출 및 마스킹 적용
+    masked_image, mask = mask_outside_contour(image)
     
     # ROI 조각 생성
     height, width = masked_image.shape[:2]
@@ -226,14 +186,17 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     preprocessed_images = []
     
     for roi, (x, y) in roi_list:
-        preprocessing_functions = [preprocess_roi_1, preprocess_roi_2]
+        preprocessing_functions = [preprocess_roi_1, preprocess_roi_2, preprocess_roi_3]
         best_circles = []
         best_preprocessed = None
         max_valid_circles = 0
         
+        # ROI에 해당하는 마스크 영역 추출
+        roi_mask = mask[y:y+roi_size[0], x:x+roi_size[1]]
+        
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
-            circles = detect_cotton_swabs(roi, preprocessed, min_radius, max_radius, param1, param2)
+            circles = detect_cotton_swabs(roi, preprocessed, min_radius, max_radius, param1, param2, roi_mask)
             
             # 원의 좌표를 전체 이미지 기준으로 변환
             circles = [(cx + x, cy + y, r) for (cx, cy, r) in circles]
@@ -260,16 +223,15 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     # 전체 이미지에 대해 다시 한 번 중복 원 제거
     unique_circles = remove_duplicate_circles(all_circles, distance_threshold)
     
-    # 면봉통 내부에 있는 원만 필터링
-    cx, cy, cr = largest_circle
+    # 컨투어 내부에 있는 원만 필터링
     filtered_circles = []
-    for (x, y, r) in unique_circles:
-        # 원의 중심이 면봉통 내부에 있는지 확인 (여유 공간 추가)
-        if (x - cx)**2 + (y - cy)**2 < (cr - r)**2:
-            filtered_circles.append((x, y, r))
-    
-    # 면봉통 원 그리기 (파란색)
-    cv2.circle(image, (cx, cy), cr, (255, 0, 0), 2)
+    gray = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
+    contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        for (x, y, r) in unique_circles:
+            if cv2.pointPolygonTest(largest_contour, (float(x), float(y)), False) >= 0:
+                filtered_circles.append((x, y, r))
     
     # 결과 이미지에 원 그리기
     for (x, y, r) in filtered_circles:

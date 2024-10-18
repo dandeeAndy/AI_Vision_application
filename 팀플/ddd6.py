@@ -14,9 +14,9 @@ def detect_largest_circle(image, min_radius=800, max_radius=1050):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
     circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
-                               param1=210,param2=110, 
-                               minRadius=min_radius, maxRadius=max_radius)
-    
+                                param1=210,param2=110, 
+                                minRadius=min_radius, maxRadius=max_radius)
+     
     if circles is not None:
         circles = np.round(circles[0, :]).astype("int")
         largest_circle = max(circles, key=lambda x: x[2])  # 가장 큰 원
