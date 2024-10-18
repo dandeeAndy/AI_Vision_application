@@ -13,7 +13,7 @@ def load_image(image_path):
 def detect_largest_circle(image, min_radius=800, max_radius=1050):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
-    circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.2, minDist=50,
+    circles = cv2.HoughCircles(blurred_image, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
                                 param1=210, param2=110, 
                                 minRadius=min_radius, maxRadius=max_radius)
     
@@ -30,6 +30,29 @@ def mask_outside_circle(image, circle):
     cv2.circle(masked_image, (cx, cy), r, (255, 255, 255), -1)  # 원 안 부분을 흰색으로
     masked_image = cv2.bitwise_and(image, masked_image)  # 원 안 부분만 남김
     return masked_image
+
+def mask_outside_contour(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh = cv2.threshold(blurred, 100, 255, cv2.THRESH_BINARY)
+    
+    kernel = np.ones((5, 5), np.uint8)
+    dilated = cv2.dilate(thresh, kernel, iterations=1)
+    
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        mask = np.zeros_like(image)
+        cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
+        result = cv2.bitwise_and(image, mask)
+
+        if len(largest_contour) >= 5:
+            ellipse = cv2.fitEllipse(largest_contour)
+            cv2.ellipse(result, ellipse, (0, 255, 0), 2)
+        else:
+            print("타원을 그릴 수 없습니다. 충분한 점이 없습니다.")
+        return result
+    return image
 
 # ROI 생성 함수
 def create_roi(image, roi_size, overlap=0.2):
@@ -203,38 +226,58 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     preprocessed_images = []
     
     for roi, (x, y) in roi_list:
-        # 전처리 함수 중 가장 많은 원을 검출한 함수의 결과를 선택
         preprocessing_functions = [preprocess_roi_1, preprocess_roi_2]
         best_circles = []
         best_preprocessed = None
-        max_circles = 0
+        max_valid_circles = 0
         
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
             circles = detect_cotton_swabs(roi, preprocessed, min_radius, max_radius, param1, param2)
-        
-            if len(circles) > max_circles:
-                max_circles = len(circles)
-                best_circles = circles
+            
+            # 원의 좌표를 전체 이미지 기준으로 변환
+            circles = [(cx + x, cy + y, r) for (cx, cy, r) in circles]
+            
+            # 중복 원 제거
+            unique_circles = remove_duplicate_circles(circles, distance_threshold)
+            
+            # ROI별로 원의 개수가 100개를 넘지 않도록 제한
+            if len(unique_circles) <= 100 and len(unique_circles) > max_valid_circles:
+                max_valid_circles = len(unique_circles)
+                best_circles = unique_circles
                 best_preprocessed = preprocessed
         
-        preprocessed_images.append(best_preprocessed)
+        # 유효한 전처리 결과가 없는 경우, 빈 이미지를 추가
+        if best_preprocessed is None:
+            best_preprocessed = np.zeros_like(roi[:,:,0])
         
-        # 원의 좌표를 전체 이미지 기준으로 변환
-        circles = [(cx + x, cy + y, r) for (cx, cy, r) in best_circles]
-        all_circles.extend(circles)
+        preprocessed_images.append(best_preprocessed)
+        all_circles.extend(best_circles)
         
         # ROI 영역 체크(초록색 사각형)
         cv2.rectangle(image, (x, y), (x + roi_size[1], y + roi_size[0]), (0, 255, 0), 2)
     
-    # 중복 원 제거
+    # 전체 이미지에 대해 다시 한 번 중복 원 제거
     unique_circles = remove_duplicate_circles(all_circles, distance_threshold)
     
-    # 결과 이미지에 원 그리기
+    # 면봉통 내부에 있는 원만 필터링
+    cx, cy, cr = largest_circle
+    filtered_circles = []
     for (x, y, r) in unique_circles:
-        cv2.circle(image, (x, y), r, (0, 0, 255), 2)
+        # 원의 중심이 면봉통 내부에 있는지 확인 (여유 공간 추가)
+        if (x - cx)**2 + (y - cy)**2 < (cr - r)**2:
+            filtered_circles.append((x, y, r))
     
-    total_cotton_swabs = len(unique_circles)
+    # 면봉통 원 그리기 (파란색)
+    cv2.circle(image, (cx, cy), cr, (255, 0, 0), 2)
+    
+    # 결과 이미지에 원 그리기
+    for (x, y, r) in filtered_circles:
+        cv2.circle(image, (x, y), r, (0, 0, 255), 2)
+        # 원의 중심점 표시
+        cv2.circle(image, (x, y), 2, (0, 255, 0), -1)
+    
+    total_cotton_swabs = len(filtered_circles)
     print(f"검출된 총 면봉 개수: {total_cotton_swabs}")
 
     # 결과 이미지에 면봉 개수 출력
@@ -249,7 +292,7 @@ def process_image(image_path, min_radius, max_radius, param1, param2, distance_t
     else:
         resized_image = image
 
-    cv2.imwrite("result_1015.jpg", resized_image)
+    cv2.imwrite("result_improved.jpg", resized_image)
     
     # 결과 이미지와 전처리된 이미지 표시
     plt.figure(figsize=(20, 10))
