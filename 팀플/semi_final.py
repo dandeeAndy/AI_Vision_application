@@ -136,40 +136,7 @@ def preprocess_4(roi):
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     return blurred_roi
 #=========================================================================================================================
-#=========================================================================================================================
 
-def adaptive_hough_circles(image, min_radius_ratio=0.01, max_radius_ratio=0.1, dp_scale=0.005):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    height, width = gray.shape
-    min_dimension = min(height, width)
-    
-    dp = 1 + dp_scale * min_dimension
-    
-    # 최소 거리 계산 (이미지 크기의 5%)
-    min_dist = int(0.05 * min_dimension)
-    
-    # 최소 및 최대 반지름 계산
-    min_radius = int(min_radius_ratio * min_dimension)
-    max_radius = int(max_radius_ratio * min_dimension)
-    
-    # Hough Circles 적용
-    circles = cv2.HoughCircles(
-        gray,
-        cv2.HOUGH_GRADIENT,
-        dp=dp,
-        minDist=min_dist,
-        param1=50,
-        param2=30,
-        minRadius=min_radius,
-        maxRadius=max_radius
-    )
-    
-    return circles
-
-
-
-
-#=========================================================================================================================
 #=========================================================================================================================
 
 # 면봉 검출 함수

@@ -69,12 +69,8 @@ def apply_clahe_based_on_brightness(image, brightness_threshold=100):
     average_brightness = calculate_brightness(image)
     
     if average_brightness > brightness_threshold:
-        print(f"밝은 사진입니다. 밝기: {average_brightness}")
-        # 밝은 사진에 대해 CLAHE 강하게 적용
         clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
     else:
-        print(f"어두운 사진입니다. 밝기: {average_brightness}")
-        # 어두운 사진에 대해 CLAHE 약하게 적용
         clahe = cv2.createCLAHE(clipLimit=1.2, tileGridSize=(8, 8))
     
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)

@@ -134,14 +134,38 @@ def preprocess_2(roi):
     return blurred_roi
 
 #=========================================================================================================================
+#=========================================================================================================================
+
+def adaptive_hough_circles(image, min_radius_ratio=0.012, max_radius_ratio=0.03, dp_scale=0.0002):
+    if len(image.shape) == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image
+    print("gray.shape: ", gray.shape)
+    height, width = gray.shape
+    min_dimension = min(height, width)
+    
+    dp = 1 + dp_scale * min_dimension
+    
+    min_dist = int(0.11 * min_dimension)
+    
+    min_radius = int(min_radius_ratio * min_dimension)
+    max_radius = int(max_radius_ratio * min_dimension)
+    print("dp: ", dp, "\nmin_dist: ", min_dist, "\nmin_radius: ", min_radius, "\nmax_radius: ", max_radius)
+    
+    # Hough Circles 적용
+    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp=dp, minDist=min_dist,
+                                param1=35, param2=32, minRadius=min_radius, maxRadius=max_radius)
+    
+    return circles
+#=========================================================================================================================
+#=========================================================================================================================
 
 # 면봉 검출 함수
 
-def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2, mask):
-    masked_blurred = cv2.bitwise_and(blurred, blurred, mask=mask)
-    circles = cv2.HoughCircles(masked_blurred, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
-                                param1=param1, param2=param2, 
-                                minRadius=min_radius, maxRadius=max_radius)
+def detect_cotton_swabs(roi, preprocessed, mask):
+    masked_preprocessed = cv2.bitwise_and(preprocessed, preprocessed, mask=mask)
+    circles = adaptive_hough_circles(masked_preprocessed, min_radius_ratio=0.05, max_radius_ratio=0.15)
     
     if circles is not None:
         return np.round(circles[0, :]).astype("int")
@@ -212,12 +236,7 @@ def process_image(image_path, distance_threshold):
         
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
-            if preprocess_func is preprocess_1:
-                circles = detect_cotton_swabs(roi, preprocessed, 29, 41, 32, 28, roi_mask)
-            elif preprocess_func is preprocess_2:
-                circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
-            # elif preprocess_func is preprocess_3:
-            #     circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
+            circles = detect_cotton_swabs(roi, preprocessed, roi_mask)
             
             # 원의 좌표를 전체 이미지 기준으로 변환
             circles = [(cx + x, cy + y, r) for (cx, cy, r) in circles]
@@ -310,20 +329,6 @@ def main():
     root.withdraw()
     
     image_path = filedialog.askopenfilename()
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 40
-    # param2 = 28
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 43
-    # param2 = 28
-    # distance_threshold = 60
-    
-    # min_radius = 25
-    # max_radius = 37
-    # param1 = 35
-    # param2 = 28
     distance_threshold = 43
     
     process_image(image_path, distance_threshold)

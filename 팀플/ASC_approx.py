@@ -30,6 +30,17 @@ def mask_outside_contour(image):
         return result, mask
     return image, None
 
+# 이미지 표시 함수
+def show_image(title, image):
+    plt.figure(figsize=(10, 10))
+    if len(image.shape) == 2:
+        plt.imshow(image, cmap='gray')
+    else:
+        plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
 # ROI 생성 함수
 def create_roi(image, roi_size, overlap=0.2):
     height, width = image.shape[:2]
@@ -53,10 +64,7 @@ def create_roi(image, roi_size, overlap=0.2):
 # V 히스토그램을 분석하여 최적의 마스크 범위를 계산하는 함수
 def get_v_mask_range(v_channel):
     hist = cv2.calcHist([v_channel], [0], None, [256], [0, 256])
-    
-    # V값 중 100에서 250 사이에서 가장 높은 빈도를 찾음
     v_peak_idx = np.argmax(hist[100:250]) + 100
-    
     lower_v = max(v_peak_idx - 60, 0)
     upper_v = 255
     return lower_v, upper_v, v_peak_idx
@@ -83,11 +91,15 @@ def apply_clahe_based_on_brightness(image, brightness_threshold=100):
     else:
         clahe = cv2.createCLAHE(clipLimit=1.2, tileGridSize=(8, 8))
     
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    cl = clahe.apply(l)
-    limg = cv2.merge((cl, a, b))
-    result = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    if len(image.shape) == 3:  # 컬러 이미지
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        cl = clahe.apply(l)
+        limg = cv2.merge((cl, a, b))
+        result = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    else:  # 그레이스케일 이미지
+        result = clahe.apply(image)
+        
     return result
 
     # blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
@@ -98,37 +110,79 @@ def apply_clahe_based_on_brightness(image, brightness_threshold=100):
 
 # v_mask_range를 이용한 전처리 함수
 def preprocess_1(roi):
+    # HSV 변환
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     
-    h_channel, s_channel, v_channel = cv2.split(hsv_img)
-    lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
+    # V 채널 추출 및 마스크 범위 계산
+    _, _, v_channel = cv2.split(hsv_img)
+    lower_v, upper_v, _ = get_v_mask_range(v_channel)
     
-    lower_bound = np.array([0, 0, lower_v])
-    upper_bound = np.array([180, 255, upper_v])
-    
+    # V 채널 마스킹
+    lower_bound = np.array([0, 0, lower_v], dtype=np.uint8)
+    upper_bound = np.array([180, 255, upper_v], dtype=np.uint8)
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+    
+    # 마스크 적용
     res = cv2.bitwise_and(roi, roi, mask=mask)
     
+    # 그레이스케일 변환 및 블러 적용
     gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
+    
+    show_image("Original ROI", roi)
+    show_image("HSV V Channel", v_channel)
+    show_image("V Channel Mask", mask)
+    show_image("Masked Result", res)
+    show_image("Final Blurred Result", blurred_roi)
+    
+    return blurred_roi
+
+def preprocess_2(roi):
+    # HSV 변환
+    hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    
+    # V 채널 추출 및 마스크 범위 계산
+    _, _, v_channel = cv2.split(hsv_img)
+    lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
+    
+    # V 채널 마스킹
+    lower_bound = np.array([0, 0, lower_v], dtype=np.uint8)
+    upper_bound = np.array([180, 255, upper_v], dtype=np.uint8)
+    mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+    
+    # 마스크 적용
+    res = cv2.bitwise_and(roi, roi, mask=mask)
+    
+    # CLAHE 적용
+    clahe_applied_roi = apply_clahe_based_on_brightness(res, v_peak_idx-30)
+    
+    # 그레이스케일 변환 및 블러 적용
+    gray_blurred = cv2.cvtColor(clahe_applied_roi, cv2.COLOR_BGR2GRAY)
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     
     return blurred_roi
 
-# v_mask_range + Clahe를 이용한 전처리 함수
-def preprocess_2(roi):
-    hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+def preprocess_3(roi):
+    # CLAHE 적용
+    clahe_applied_roi = apply_clahe_based_on_brightness(roi)
     
-    h_channel, s_channel, v_channel = cv2.split(hsv_img)
-    lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
+    # HSV 변환
+    hsv_img = cv2.cvtColor(clahe_applied_roi, cv2.COLOR_BGR2HSV)
     
-    lower_bound = np.array([0, 0, lower_v])
-    upper_bound = np.array([180, 255, upper_v])
+    # V 채널 추출 및 마스크 범위 계산
+    _, _, v_channel = cv2.split(hsv_img)
+    lower_v, upper_v, _ = get_v_mask_range(v_channel)
     
+    # V 채널 마스킹
+    lower_bound = np.array([0, 0, lower_v], dtype=np.uint8)
+    upper_bound = np.array([180, 255, upper_v], dtype=np.uint8)
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
-    res = cv2.bitwise_and(roi, roi, mask=mask)
     
-    clahe_applied_roi = apply_clahe_based_on_brightness(res, v_peak_idx-30)
-    gray_blurred = cv2.cvtColor(clahe_applied_roi, cv2.COLOR_BGR2GRAY)
+    # 마스크 적용
+    res = cv2.bitwise_and(clahe_applied_roi, clahe_applied_roi, mask=mask)
+    
+    # 그레이스케일 변환 및 블러 적용
+    gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     
     return blurred_roi
@@ -136,6 +190,65 @@ def preprocess_2(roi):
 #=========================================================================================================================
 
 # 면봉 검출 함수
+
+
+def improved_cotton_swab_edge_detection(image):
+    # 이미지 채널 수 확인
+    if len(image.shape) == 2 or image.shape[2] == 1:
+        # 그레이스케일 이미지
+        v_channel = image
+    else:
+        # BGR 이미지
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        _, _, v_channel = cv2.split(hsv)
+    
+    # V 채널 마스크 범위 계산
+    lower_v, upper_v, _ = get_v_mask_range(v_channel)
+    
+    # V 채널 마스킹
+    v_mask = cv2.inRange(v_channel, np.array(lower_v, dtype=np.uint8), np.array(upper_v, dtype=np.uint8))
+    
+    # 마스크 반전 (면봉이 검은색이 되도록)
+    v_mask_inv = cv2.bitwise_not(v_mask)
+    
+    # 팽창 연산 (검은색 부분을 확장)
+    kernel = np.ones((3,3), np.uint8)
+    dilated = cv2.dilate(v_mask_inv, kernel, iterations=1)
+    
+    # Canny 엣지 검출
+    edges = cv2.Canny(dilated, 40, 120)
+    
+    return edges, dilated
+
+def detect_cotton_swabs_approxpoly(roi, preprocessed, min_radius, max_radius, mask):
+    edges, dilated = improved_cotton_swab_edge_detection(preprocessed)
+    
+    masked_edges = cv2.bitwise_and(edges, edges, mask=mask)
+    
+    contours, _ = cv2.findContours(masked_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    detected_circles = []
+    
+    for contour in contours:
+        perimeter = cv2.arcLength(contour, True)
+        
+        epsilon = 0.02 * perimeter
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        
+        if len(approx) >= 6:
+            (x, y), radius = cv2.minEnclosingCircle(contour)
+            center = (int(x), int(y))
+            radius = int(radius)
+            
+            if min_radius <= radius <= max_radius:
+                area = cv2.contourArea(contour)
+                circularity = 4 * np.pi * area / (perimeter * perimeter)
+                
+                # 원형도가 0.7 이상인 경우에만 유효한 원으로 간주
+                if circularity > 0.7:
+                    detected_circles.append((center[0], center[1], radius))
+    
+    return detected_circles
 
 def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2, mask):
     masked_blurred = cv2.bitwise_and(blurred, blurred, mask=mask)
@@ -200,24 +313,16 @@ def process_image(image_path, distance_threshold):
     preprocessed_images = []
     
     for roi, (x, y) in roi_list:
-        # preprocessing_functions = [preprocess_1]
-        # preprocessing_functions = [preprocess_2]
-        preprocessing_functions = [preprocess_1, preprocess_2]
+        preprocessing_functions = [preprocess_1, preprocess_2, preprocess_3]
         best_circles = []
         best_preprocessed = None
         max_valid_circles = 0
         
-        # ROI에 해당하는 마스크 영역 추출
         roi_mask = mask[y:y+roi_size[0], x:x+roi_size[1]]
         
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
-            if preprocess_func is preprocess_1:
-                circles = detect_cotton_swabs(roi, preprocessed, 29, 41, 32, 28, roi_mask)
-            elif preprocess_func is preprocess_2:
-                circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
-            # elif preprocess_func is preprocess_3:
-            #     circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
+            circles = detect_cotton_swabs_approxpoly(roi, preprocessed, 25, 37, roi_mask)
             
             # 원의 좌표를 전체 이미지 기준으로 변환
             circles = [(cx + x, cy + y, r) for (cx, cy, r) in circles]
@@ -230,7 +335,6 @@ def process_image(image_path, distance_threshold):
                 max_valid_circles = len(unique_circles)
                 best_circles = unique_circles
                 best_preprocessed = preprocessed
-        
         
         # unique_circles = remove_duplicate_circles(best_circles, distance_threshold)
         
@@ -287,7 +391,7 @@ def process_image(image_path, distance_threshold):
     plt.subplot(4, 5, 1)
     plt.imshow(cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB))
     plt.title(f"Result Image (Total: {total_cotton_swabs})")
-    plt.axis('off')
+    plt.axis('off') 
     
     # ROI 이미지 표시 (오른쪽으로 정렬)
     for i, preprocessed_img in enumerate(preprocessed_images):
@@ -310,21 +414,7 @@ def main():
     root.withdraw()
     
     image_path = filedialog.askopenfilename()
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 40
-    # param2 = 28
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 43
-    # param2 = 28
-    # distance_threshold = 60
-    
-    # min_radius = 25
-    # max_radius = 37
-    # param1 = 35
-    # param2 = 28
-    distance_threshold = 43
+    distance_threshold = 35
     
     process_image(image_path, distance_threshold)
 
