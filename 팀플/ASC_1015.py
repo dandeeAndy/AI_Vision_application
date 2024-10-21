@@ -133,6 +133,33 @@ def preprocess_2(roi):
     
     return blurred_roi
 
+
+def preprocess_3(roi):
+    # CLAHE 적용
+    clahe_applied_roi = apply_clahe_based_on_brightness(roi)
+    
+    # HSV 변환
+    hsv_img = cv2.cvtColor(clahe_applied_roi, cv2.COLOR_BGR2HSV)
+    
+    # V 채널 추출 및 마스크 범위 계산
+    _, _, v_channel = cv2.split(hsv_img)
+    lower_v, upper_v, _ = get_v_mask_range(v_channel)
+    
+    # V 채널 마스킹
+    lower_bound = np.array([0, 0, lower_v], dtype=np.uint8)
+    upper_bound = np.array([180, 255, upper_v], dtype=np.uint8)
+    mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
+    
+    # 마스크 적용
+    res = cv2.bitwise_and(clahe_applied_roi, clahe_applied_roi, mask=mask)
+    
+    # 그레이스케일 변환 및 블러 적용
+    gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
+    
+    return blurred_roi
+
+
 #=========================================================================================================================
 
 # 면봉 검출 함수
@@ -200,9 +227,7 @@ def process_image(image_path, distance_threshold):
     preprocessed_images = []
     
     for roi, (x, y) in roi_list:
-        # preprocessing_functions = [preprocess_1]
-        # preprocessing_functions = [preprocess_2]
-        preprocessing_functions = [preprocess_1, preprocess_2]
+        preprocessing_functions = [preprocess_1, preprocess_2, preprocess_3]
         best_circles = []
         best_preprocessed = None
         max_valid_circles = 0
@@ -216,8 +241,8 @@ def process_image(image_path, distance_threshold):
                 circles = detect_cotton_swabs(roi, preprocessed, 29, 41, 32, 28, roi_mask)
             elif preprocess_func is preprocess_2:
                 circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
-            # elif preprocess_func is preprocess_3:
-            #     circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
+            elif preprocess_func is preprocess_3:
+                circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
             
             # 원의 좌표를 전체 이미지 기준으로 변환
             circles = [(cx + x, cy + y, r) for (cx, cy, r) in circles]

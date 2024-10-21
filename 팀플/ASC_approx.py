@@ -65,7 +65,7 @@ def create_roi(image, roi_size, overlap=0.2):
 def get_v_mask_range(v_channel):
     hist = cv2.calcHist([v_channel], [0], None, [256], [0, 256])
     v_peak_idx = np.argmax(hist[100:250]) + 100
-    lower_v = max(v_peak_idx - 60, 0)
+    lower_v = max(v_peak_idx*0.7, 0)
     upper_v = 255
     return lower_v, upper_v, v_peak_idx
 
@@ -218,12 +218,19 @@ def improved_cotton_swab_edge_detection(image):
     # Canny 엣지 검출
     edges = cv2.Canny(dilated, 40, 120)
     
+    show_image("Input Image", image)
+    show_image("V Channel", v_channel)
+    show_image("V Mask Inverted", v_mask_inv)
+    show_image("Dilated Image", dilated)
+    show_image("Canny Edges", edges)
+    
     return edges, dilated
 
 def detect_cotton_swabs_approxpoly(roi, preprocessed, min_radius, max_radius, mask):
     edges, dilated = improved_cotton_swab_edge_detection(preprocessed)
     
     masked_edges = cv2.bitwise_and(edges, edges, mask=mask)
+    show_image("Masked Edges", masked_edges)
     
     contours, _ = cv2.findContours(masked_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
@@ -244,9 +251,14 @@ def detect_cotton_swabs_approxpoly(roi, preprocessed, min_radius, max_radius, ma
                 area = cv2.contourArea(contour)
                 circularity = 4 * np.pi * area / (perimeter * perimeter)
                 
-                # 원형도가 0.7 이상인 경우에만 유효한 원으로 간주
                 if circularity > 0.7:
                     detected_circles.append((center[0], center[1], radius))
+    
+    # 검출된 원 시각화
+    result_image = cv2.cvtColor(masked_edges, cv2.COLOR_GRAY2BGR)
+    for (x, y, r) in detected_circles:
+        cv2.circle(result_image, (x, y), r, (0, 255, 0), 2)
+    show_image("Detected Circles", result_image)
     
     return detected_circles
 
@@ -293,7 +305,7 @@ def Put_Korean_Text(src, text, pos, font_size, font_color) :
     draw.text(pos, text, font=font, fill= font_color)
     return np.array(img_pil)
 
-# 이미지 처리 함수
+# 이미지 처리 함수 
 def process_image(image_path, distance_threshold):
     image = load_image(image_path)
     if image is None:
@@ -302,6 +314,8 @@ def process_image(image_path, distance_threshold):
     
     # 면봉통 검출 및 마스킹 적용
     masked_image, mask = mask_outside_contour(image)
+    
+    show_image("Masked Image", masked_image)
     
     # ROI 조각 생성
     height, width = masked_image.shape[:2]
