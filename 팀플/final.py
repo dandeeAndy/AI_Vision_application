@@ -50,6 +50,40 @@ def create_roi(image, roi_size, overlap=0.2):
 
     return roi_list
 
+
+def calculate_brightness(image):
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    v_channel = hsv_image[:, :, 2]  # V 채널 (밝기)
+    
+    bright_pixels = v_channel[v_channel >= 50] # V 값이 50 이상인 값들만 추출
+    
+    if bright_pixels.size > 0:
+        average_brightness = np.mean(bright_pixels)
+    else:
+        average_brightness = 0
+    
+    return average_brightness
+
+# CLAHE 적용 함수 (밝기 기반)
+def apply_clahe_based_on_brightness(image, brightness_threshold=100):
+    average_brightness = calculate_brightness(image)
+    
+    if average_brightness > brightness_threshold:
+        print(f"밝은 사진입니다. 밝기: {average_brightness}")
+        # 밝은 사진에 대해 CLAHE 강하게 적용
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+    else:
+        print(f"어두운 사진입니다. 밝기: {average_brightness}")
+        # 어두운 사진에 대해 CLAHE 약하게 적용
+        clahe = cv2.createCLAHE(clipLimit=1.2, tileGridSize=(8, 8))
+    
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    cl = clahe.apply(l)
+    limg = cv2.merge((cl, a, b))
+    result = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    return result
+
 # V 히스토그램을 분석하여 최적의 마스크 범위를 계산하는 함수
 def get_v_mask_range(v_channel):
     hist = cv2.calcHist([v_channel], [0], None, [256], [0, 256])
@@ -65,36 +99,37 @@ def get_v_mask_range(v_channel):
 # ROI 전처리 함수
 def preprocess_roi_1(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-
-    # 각 ROI마다 V 채널 분석 후 마스크 적용
+    
     h_channel, s_channel, v_channel = cv2.split(hsv_img)
-
-    # V 채널의 히스토그램을 분석하여 마스크 범위 지정
-    lower_v, upper_v, _ = get_v_mask_range(v_channel)
-
-    # HSV 범위를 설정 (H와 S는 신경쓰지 않고 V만 설정)
+    lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
+    
     lower_bound = np.array([0, 0, lower_v])
     upper_bound = np.array([180, 255, upper_v])
-
-    # 마스크 적용
+    
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
     res = cv2.bitwise_and(roi, roi, mask=mask)
-
+    
     gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
-
+    
     return blurred_roi
 
 def preprocess_roi_2(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    
     h_channel, s_channel, v_channel = cv2.split(hsv_img)
     lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
+    
     lower_bound = np.array([0, 0, lower_v])
     upper_bound = np.array([180, 255, upper_v])
+    
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
     res = cv2.bitwise_and(roi, roi, mask=mask)
-    gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    
+    clahe_applied_roi = apply_clahe_based_on_brightness(res, v_peak_idx-30)
+    gray_blurred = cv2.cvtColor(clahe_applied_roi, cv2.COLOR_BGR2GRAY)
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
+    
     return blurred_roi
 
 # 면봉 검출 함수
