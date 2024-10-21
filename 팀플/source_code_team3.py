@@ -4,7 +4,7 @@ import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 
 # 시각화 및 이미지 처리
-filename = "mb_001.jpg"  # 입력 이미지 파일명을 적으세요.
+filename = "mb_031.jpg"  # 입력 이미지 파일명을 적으세요.
 img = cv2.imread(filename, cv2.IMREAD_COLOR)
 
 #=============알고리즘 및 시각화 소스코드 작성 (시작)==============
@@ -31,6 +31,7 @@ def mask_outside_contour(image):
     return image, None
 
 # ROI 생성 함수
+
 def create_roi(image, roi_size, overlap=0.2):
     height, width = image.shape[:2]
     roi_height, roi_width = roi_size
@@ -241,5 +242,6 @@ else:
     
     # 시각화 결과 표시(예측 결과 확인용, 이 부분은 수정하지 마시오)
     cv2.imshow('visualization', img_vis)  # 시각화
+    cv2.imwrite("result_031.jpg", img_vis)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
