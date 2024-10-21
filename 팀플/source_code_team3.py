@@ -4,7 +4,7 @@ import numpy as np
 from PIL import ImageFont, ImageDraw, Image
 
 # 시각화 및 이미지 처리
-filename = "mb_031.jpg"  # 입력 이미지 파일명을 적으세요.
+filename = "mb_001.jpg"  # 입력 이미지 파일명을 적으세요.
 img = cv2.imread(filename, cv2.IMREAD_COLOR)
 
 #=============알고리즘 및 시각화 소스코드 작성 (시작)==============
@@ -65,6 +65,7 @@ def calculate_brightness(image):
     return average_brightness
 
 # CLAHE 적용 함수 (밝기 기반)
+
 def apply_clahe_based_on_brightness(image, brightness_threshold=120):
     average_brightness = calculate_brightness(image)
     
@@ -157,13 +158,13 @@ def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2, ma
 def remove_duplicate_circles(circles, distance_threshold):
     if len(circles) == 0:
         return []
-
+    
     unique_circles = []
     while len(circles) > 0:
         current_circle = circles.pop(0)
         unique_circles.append(current_circle)
         circles = [circle for circle in circles if calculate_distance(current_circle, circle) > distance_threshold]
-
+    
     return unique_circles
 
 # 원 사이의 거리 계산 함수
@@ -185,21 +186,19 @@ if img is None:
     print("이미지를 불러오는 데 실패했습니다. 파일명을 확인하세요.")
 else:
     masked_image, mask = mask_outside_contour(img)
-
-    # ROI 생성
+    
     height, width = masked_image.shape[:2]
     roi_size = (int(height * 5 / 17), int(width * 5 / 17))
     roi_list = create_roi(masked_image, roi_size)
-
-    # 원 검출 및 전처리
+    
     all_circles = []
     for roi, (x, y) in roi_list:
         preprocessing_functions = [preprocess_1, preprocess_2, preprocess_3]
         best_circles = []
         max_valid_circles = 0
-
+        
         roi_mask = mask[y:y+roi_size[0], x:x+roi_size[1]]
-
+        
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
             if preprocess_func is preprocess_1:
@@ -211,15 +210,15 @@ else:
             
             circles = [(cx + x, cy + y, r) for (cx, cy, r) in circles]
             unique_circles = remove_duplicate_circles(circles, 43)
-
+            
             if len(unique_circles) <= 100 and len(unique_circles) > max_valid_circles:
                 max_valid_circles = len(unique_circles)
                 best_circles = unique_circles
-
+        
         all_circles.extend(best_circles)
-
+    
     unique_circles = remove_duplicate_circles(all_circles, 43)
-
+    
     filtered_circles = []
     gray = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
     contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -228,20 +227,15 @@ else:
         for (x, y, r) in unique_circles:
             if cv2.pointPolygonTest(largest_contour, (float(x), float(y)), False) >= 0:
                 filtered_circles.append((x, y, r))
-
+    
     for (x, y, r) in filtered_circles:
         cv2.circle(img, (x, y), r, (0, 0, 255), 2)
-
     total_cotton_swabs = len(filtered_circles)
     
-    # 결과 이미지에 면봉 개수 출력
     img_vis = Put_Text(img, f"Count: {total_cotton_swabs}", (30, 60), 80, (0, 255, 255))
     
 #=============알고리즘 및 시각화 소스코드 작성 (끝)==============
-
-    
     # 시각화 결과 표시(예측 결과 확인용, 이 부분은 수정하지 마시오)
     cv2.imshow('visualization', img_vis)  # 시각화
-    cv2.imwrite("result_031.jpg", img_vis)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
