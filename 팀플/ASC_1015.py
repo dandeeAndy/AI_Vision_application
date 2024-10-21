@@ -19,14 +19,14 @@ def mask_outside_contour(image):
     dilated = cv2.dilate(thresh, kernel, iterations=1)
     
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+    
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        mask = np.zeros_like(image)  # 마스크는 이미지와 같은 크기여야 함
+        mask = np.zeros_like(image)
         cv2.drawContours(mask, [largest_contour], -1, (255, 255, 255), thickness=cv2.FILLED)
-        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)  # 마스크를 그레이스케일로 변환
-        mask = mask.astype(np.uint8)  # 마스크를 CV_8U 타입으로 변환
-        result = cv2.bitwise_and(image, image, mask=mask)  # 마스크를 적용한 이미지
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)               # 마스크를 그레이스케일로 변환
+        mask = mask.astype(np.uint8)                                # 마스크를 CV_8U 타입으로 변환
+        result = cv2.bitwise_and(image, image, mask=mask)           # 마스크를 적용한 이미지
         return result, mask
     return image, None
 
@@ -57,7 +57,6 @@ def get_v_mask_range(v_channel):
     # V값 중 100에서 250 사이에서 가장 높은 빈도를 찾음
     v_peak_idx = np.argmax(hist[100:250]) + 100
     
-    # 마스크 범위를 지정 (+30, -30)
     lower_v = max(v_peak_idx - 60, 0)
     upper_v = 255
     return lower_v, upper_v, v_peak_idx
@@ -66,14 +65,12 @@ def calculate_brightness(image):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     v_channel = hsv_image[:, :, 2]  # V 채널 (밝기)
     
-    # V 값이 50 이상인 값들만 추출
-    bright_pixels = v_channel[v_channel >= 50]
+    bright_pixels = v_channel[v_channel >= 50] # V 값이 50 이상인 값들만 추출
     
-    # 조건에 맞는 값들이 있는 경우에만 평균을 계산
     if bright_pixels.size > 0:
         average_brightness = np.mean(bright_pixels)
     else:
-        average_brightness = 0  # 조건에 맞는 값이 없으면 0 반환
+        average_brightness = 0
     
     return average_brightness
 
@@ -100,7 +97,7 @@ def apply_clahe_based_on_brightness(image, brightness_threshold=100):
 #=========================================================================================================================
 
 # ROI 전처리 함수
-def preprocess_roi_1(roi):
+def preprocess_1(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     h_channel, s_channel, v_channel = cv2.split(hsv_img)
     lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
@@ -116,31 +113,24 @@ def preprocess_roi_1(roi):
     
     return opened
 
-def preprocess_roi_2(roi):
+def preprocess_2(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     
-    # 각 ROI마다 V 채널 분석 후 마스크 적용
-    h_channel, s_channel, v_channel = cv2.split(hsv_img)
+    h_channel, s_channel, v_channel = cv2.split(hsv_img) # 각 ROI마다 V 채널 분석 후 마스크 적용
+    lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel) # V 채널의 히스토그램을 분석하여 마스크 범위 지정
     
-    # V 채널의 히스토그램을 분석하여 마스크 범위 지정
-    lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
-    
-    # HSV 범위를 설정 (H와 S는 신경쓰지 않고 V만 설정)
     lower_bound = np.array([0, 0, lower_v])
     upper_bound = np.array([180, 255, upper_v])
     
-    # 마스크 적용
     mask = cv2.inRange(hsv_img, lower_bound, upper_bound)
     res = cv2.bitwise_and(roi, roi, mask=mask)
-    
     gray_blurred = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-    
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     
     return blurred_roi
 
 
-def preprocess_roi_4(roi):
+def preprocess_4(roi):
     hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
     h_channel, s_channel, v_channel = cv2.split(hsv_img)
     lower_v, upper_v, v_peak_idx = get_v_mask_range(v_channel)
@@ -153,19 +143,19 @@ def preprocess_roi_4(roi):
     blurred_roi = cv2.GaussianBlur(gray_blurred, (5, 5), 0)
     return blurred_roi
 
-def preprocess_roi_5(roi):
+def preprocess_5(roi):
     clahe_roi = apply_clahe_based_on_brightness(roi,120)
     gray = cv2.cvtColor(clahe_roi, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     return blurred
 
-def preprocess_roi_6(roi):
+def preprocess_6(roi):
     clahe_roi = apply_clahe_based_on_brightness(roi,130)
     gray = cv2.cvtColor(clahe_roi, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     return blurred
 
-def preprocess_roi_7(roi):
+def preprocess_7(roi):
     clahe_roi = apply_clahe_based_on_brightness(roi,140)
     gray = cv2.cvtColor(clahe_roi, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -174,6 +164,7 @@ def preprocess_roi_7(roi):
 #=========================================================================================================================
 
 # 면봉 검출 함수
+
 def detect_cotton_swabs(roi, blurred, min_radius, max_radius, param1, param2, mask):
     masked_blurred = cv2.bitwise_and(blurred, blurred, mask=mask)
     circles = cv2.HoughCircles(masked_blurred, cv2.HOUGH_GRADIENT, dp=1.3, minDist=50,
@@ -240,7 +231,7 @@ def process_image(image_path, distance_threshold):
         # preprocessing_functions = [preprocess_roi_1]
         # preprocessing_functions = [preprocess_roi_2]
         # preprocessing_functions = [preprocess_roi_4]
-        preprocessing_functions = [preprocess_roi_2, preprocess_roi_4]
+        preprocessing_functions = [preprocess_2, preprocess_4]
         # preprocessing_functions = [preprocess_roi_2,preprocess_roi_4,preprocess_roi_5,preprocess_roi_6,preprocess_roi_7]
         best_circles = []
         best_preprocessed = None
@@ -251,11 +242,11 @@ def process_image(image_path, distance_threshold):
         
         for preprocess_func in preprocessing_functions:
             preprocessed = preprocess_func(roi)
-            if preprocess_func is preprocess_roi_1:
+            if preprocess_func is preprocess_1:
                 circles = detect_cotton_swabs(roi, preprocessed, 25, 50, 32, 28, roi_mask)
-            elif preprocess_func is preprocess_roi_2:
+            elif preprocess_func is preprocess_2:
                 circles = detect_cotton_swabs(roi, preprocessed, 27, 50, 35, 32, roi_mask)
-            elif preprocess_func is preprocess_roi_4:
+            elif preprocess_func is preprocess_4:
                 circles = detect_cotton_swabs(roi, preprocessed, 25, 37, 35, 32, roi_mask)
             
             # 원의 좌표를 전체 이미지 기준으로 변환
@@ -316,7 +307,7 @@ def process_image(image_path, distance_threshold):
         resized_image = cv2.resize(image, (max_width, new_height))
     else:
         resized_image = image
-
+    
     cv2.imwrite("result_improved.jpg", resized_image)
     
     # 결과 이미지와 전처리된 이미지 표시
