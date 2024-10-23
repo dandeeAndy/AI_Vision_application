@@ -218,8 +218,8 @@ def process_image(image_path, distance_threshold):
     preprocessed_images = []
     
     for roi, (x, y) in roi_list:
-        preprocessing_functions = [preprocess_1]
-        # preprocessing_functions = [preprocess_2]
+        # preprocessing_functions = [preprocess_1]
+        preprocessing_functions = [preprocess_2]
         # preprocessing_functions = [preprocess_3]
         # preprocessing_functions = [preprocess_1, preprocess_2, preprocess_3]
         best_circles = []
@@ -277,16 +277,16 @@ def process_image(image_path, distance_threshold):
                 filtered_circles.append((x, y, r))
     
     # 결과 이미지에 원 그리기
-    for (x, y, r) in filtered_circles:
-        cv2.circle(image, (x, y), r, (0, 0, 255), 2)
-        # 원의 중심점 표시
-        cv2.circle(image, (x, y), 2, (0, 255, 0), -1)
+    # for (x, y, r) in filtered_circles:
+    #     cv2.circle(image, (x, y), r, (0, 0, 255), 2)
+    #     # 원의 중심점 표시
+    #     cv2.circle(image, (x, y), 2, (0, 255, 0), -1)
     
     total_cotton_swabs = len(filtered_circles)
     print(f"검출된 총 면봉 개수: {total_cotton_swabs}")
 
     # 결과 이미지에 면봉 개수 출력
-    image = Put_Korean_Text(image, f"면봉 수: {total_cotton_swabs}개", (30, 60), 80, (0, 255, 255))
+    # image = Put_Korean_Text(image, f"면봉 수: {total_cotton_swabs}개", (30, 60), 80, (0, 255, 255))
     
     # 리사이즈 비율 설정 (1000 픽셀 이하로 조정)
     max_width = 2000
@@ -329,20 +329,6 @@ def main():
     root.withdraw()
     
     image_path = filedialog.askopenfilename()
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 40
-    # param2 = 28
-    # min_radius = 30
-    # max_radius = 50
-    # param1 = 43
-    # param2 = 28
-    # distance_threshold = 60
-    
-    # min_radius = 25
-    # max_radius = 37
-    # param1 = 35
-    # param2 = 28
     distance_threshold = 43
     
     process_image(image_path, distance_threshold)
