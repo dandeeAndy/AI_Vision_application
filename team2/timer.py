@@ -35,9 +35,9 @@ while True:
         for handLms in results.multi_hand_landmarks:
             for i in range(0, 5):
                 open[i] = dist(handLms.landmark[0].x, handLms.landmark[0].y,
-                               handLms.landmark[compareIndex[i][0]].x, handLms.landmark[compareIndex[i][0]].y) < \
-                           dist(handLms.landmark[0].x, handLms.landmark[0].y,
-                               handLms.landmark[compareIndex[i][1]].x, handLms.landmark[compareIndex[i][1]].y)
+                                handLms.landmark[compareIndex[i][0]].x, handLms.landmark[compareIndex[i][0]].y) < \
+                        dist(handLms.landmark[0].x, handLms.landmark[0].y,
+                                handLms.landmark[compareIndex[i][1]].x, handLms.landmark[compareIndex[i][1]].y)
             
             # 손모양 감지
             print(open)

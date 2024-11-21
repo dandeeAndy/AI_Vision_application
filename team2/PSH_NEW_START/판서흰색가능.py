@@ -2,6 +2,10 @@ import cv2 as cv
 import mediapipe as mp
 import glob
 import numpy as np
+import os
+
+# 스크립트가 있는 디렉토리로 작업 디렉토리 변경
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # MediaPipe 초기화
 mp_hands = mp.solutions.hands
@@ -14,7 +18,7 @@ hands = mp_hands.Hands(
 )
 
 # 슬라이드 이미지 불러오기 및 리사이즈
-img_files = sorted(glob.glob('./images/*.jpg'))  # 슬라이드 경로
+img_files = sorted(glob.glob('lecture.png'))  # 슬라이드 경로
 if not img_files:
     print("슬라이드 이미지가 없습니다.")
     exit()
@@ -83,7 +87,7 @@ while True:
             # 레이저 포인터 표시
             if is_laser_active and laser_pointer_x and laser_pointer_y:
                 cv.circle(slide_image_copy, (laser_pointer_x, laser_pointer_y),
-                          laser_pointer_radius, laser_pointer_color, -1)
+                            laser_pointer_radius, laser_pointer_color, -1)
 
             # 판서 모드
             thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]

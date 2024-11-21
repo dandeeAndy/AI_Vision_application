@@ -3,6 +3,10 @@ import mediapipe as mp
 import time
 import math
 import numpy as np
+import os
+
+# 스크립트가 있는 디렉토리로 작업 디렉토리 변경
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 def distance(p1, p2):
     return math.dist((p1.x, p1.y), (p2.x, p2.y))
