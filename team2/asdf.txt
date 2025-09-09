@@ -1,0 +1,33 @@
+레이저
+하이라이트
+draw
+슬라이드
+판서
+지우개
+전체지우개
+crop
+enlarge
+shrink
+핵심노트 이동
+
+draw
+하이라이트
+select move
+슬라이드 빠르게
+Undo/Redo
+쉬는시간
+pdf저장
+---------------
+지우개
+슬라이드 빠르게
+슬라이드
+레이저
+draw
+draw
+crop/enlarge/shrink
+****select_move 다시찍기
+crop/enlarge/shrink + move
+주먹
+breaktime
+Undo
+****pdf다시찍기
